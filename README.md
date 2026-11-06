@@ -6,7 +6,7 @@ A workspace for counting invoices by **AP clerk** and **project**, using one sha
 
 **Website:** [AP Count](https://ap-count.vercel.app/) · [Bilingual manual](https://ap-count.vercel.app/#manual)
 
-Use the top **AP Count / Manual** navigation to switch between the counting workspace and a dedicated documentation view. Direct links are `#count` and `#manual`; browser Back/Forward also switches views. Switching preserves the loaded file, analysis, filters, and manual expansion state. The **Manual / 使用手册** includes a quick start and expandable guides for uploads, counting rules, shared portfolios, ownership conflicts, downloads, troubleshooting, and privacy. Its EN/中文 controls use the same language setting as the rest of the app.
+Use the top **Main Page / Manual** navigation to switch between the counting workspace and a dedicated documentation view. Direct links are `#count` and `#manual`; browser Back/Forward also switches views. Switching preserves the loaded file, analysis, filters, and manual expansion state. The **Manual / 使用手册** includes a quick start and expandable guides for uploads, counting rules, shared portfolios, ownership conflicts, downloads, troubleshooting, and privacy. The global EN/中文 control in the top header sets the language for both pages.
 
 This deployment is a **personal, non-commercial demonstration**. Vercel's free [Hobby plan](https://vercel.com/docs/plans/hobby) is restricted to personal, non-commercial use. Company production use needs hosting with suitable terms. Authentication uses [Clerk Hobby](https://clerk.com/pricing), and the small shared configuration uses a private [Vercel Blob store](https://vercel.com/docs/vercel-blob/usage-and-pricing). These services have free allowances and usage limits; no paid upgrade is required for this demonstration. Provider terms, free allowances, and future availability can change.
 
@@ -126,7 +126,7 @@ AP Count 用于按 **AP clerk** 与 **project** 统计 invoice 数量。支持�
 
 ### 使用步骤
 
-顶部 **AP Count／使用手册** 导航将统计工作区和手册分开显示，可来回切换，也支持浏览器前进／后退。切换时保留已上传文件、统计结果、筛选条件及手册展开状态。
+顶部 **主页／使用手册** 导航将统计工作区和手册分开显示，可来回切换，也支持浏览器前进／后退。切换时保留已上传文件、统计结果、筛选条件及手册展开状态。页头的 EN／中文按钮统一控制两页的语言。
 
 1. 上传或拖入一个文件。演示数据均为合成记录，不包含真实附件。
 2. 核对工作表、表头行以及 Company 列。系统会自动识别 Company 表头；文件有标题行或列名不同时，可以手动调整。

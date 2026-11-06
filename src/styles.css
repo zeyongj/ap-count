@@ -1027,9 +1027,6 @@ h1 {
   line-height: 1.7;
   font-size: 13px;
 }
-.manual-language {
-  flex-shrink: 0;
-}
 .manual-quickstart {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1162,10 +1159,6 @@ h1 {
   }
   .manual-heading-copy {
     min-width: 0;
-  }
-  .manual-language {
-    grid-column: 1 / -1;
-    justify-self: start;
   }
   .manual-header h1 {
     font-size: 19px;

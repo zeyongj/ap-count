@@ -70,8 +70,9 @@ const copy = {
   en: {
     language: "Language",
     pageNavigation: "Page navigation",
+    mainPage: "Main Page",
     private: "Private by design",
-    eyebrow: "ACCOUNTS PAYABLE WORKSPACE",
+    eyebrow: "AP Tool",
     title: "Every invoice, accounted for.",
     subtitle: "Turn your invoice file into a clear view of AP workloads.",
     portfolios: "Manage portfolios",
@@ -108,7 +109,7 @@ const copy = {
     saveInvalid:
       "The server found an invalid or conflicting assignment. Review the draft before saving.",
     guide: "Manual",
-    importTitle: "Invoice file",
+    importTitle: "Invoice data",
     drop: "Drop your invoice file here",
     dropSub: "or choose a file from your computer",
     browse: "Browse files",
@@ -267,8 +268,9 @@ const copy = {
   zh: {
     language: "语言",
     pageNavigation: "页面导航",
+    mainPage: "主页",
     private: "注重数据隐私",
-    eyebrow: "应付账款工作台",
+    eyebrow: "AP 工具",
     title: "每一张发票，都清晰有数。",
     subtitle: "导入发票文件，即可查看各 AP 的工作量。",
     portfolios: "管理 AP 分配",
@@ -299,7 +301,7 @@ const copy = {
     sessionExpired: "管理员登录已过期，请重新登录后保存。",
     saveInvalid: "服务器检测到无效或冲突的分配，请检查草稿后再保存。",
     guide: "使用手册",
-    importTitle: "发票文件",
+    importTitle: "发票数据",
     drop: "将发票文件拖放到这里",
     dropSub: "或从电脑中选择一个文件",
     browse: "选择文件",
@@ -1616,7 +1618,7 @@ export default function App() {
           }}
         >
           <BarChart3 aria-hidden="true" />
-          AP Count
+          {t.mainPage}
         </a>
         <a
           href="#manual"
@@ -2369,7 +2371,7 @@ export default function App() {
           </div>
         </div>
         <div className="page-view" hidden={activePage !== "manual"}>
-          <Manual language={language} onLanguageChange={setLanguage} />
+          <Manual language={language} />
         </div>
       </main>
       <footer className="footer">

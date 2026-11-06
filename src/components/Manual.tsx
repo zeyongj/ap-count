@@ -177,13 +177,7 @@ const content: Record<Language, ManualCopy> = {
   },
 };
 
-export default function Manual({
-  language,
-  onLanguageChange,
-}: {
-  language: Language;
-  onLanguageChange?: (language: Language) => void;
-}) {
+export default function Manual({ language }: { language: Language }) {
   const t = content[language];
 
   return (
@@ -203,30 +197,6 @@ export default function Manual({
           </h1>
           <p className="manual-intro">{t.intro}</p>
         </div>
-        {onLanguageChange ? (
-          <div
-            className="language manual-language"
-            role="group"
-            aria-label={language === "en" ? "Manual language" : "手册语言"}
-          >
-            <button
-              type="button"
-              className={language === "en" ? "active" : ""}
-              aria-pressed={language === "en"}
-              onClick={() => onLanguageChange("en")}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              className={language === "zh" ? "active" : ""}
-              aria-pressed={language === "zh"}
-              onClick={() => onLanguageChange("zh")}
-            >
-              中文
-            </button>
-          </div>
-        ) : null}
       </header>
 
       <ol className="manual-quickstart">
