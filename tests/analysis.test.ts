@@ -54,8 +54,11 @@ describe('project extraction and faithful defaults', () => {
 })
 
 describe('editable distributions', () => {
-  test('explicit projects override another clerk range', () => {
+  test('explicit projects cannot silently override another clerk range', () => {
     const rules = [rule('A', 5000, 6000), { ...rule('B', 7000, null), include: [5419] }]
+    expect(validateRules(rules)[0].code).toBe('overlap')
+    expect(() => compileRules(rules)).toThrow('Choose which AP clerk')
+    rules[0].exclude = [5419]
     expect(validateRules(rules)).toEqual([])
     const assign = compileRules(rules)
     expect(assign(5419)?.name).toBe('B')

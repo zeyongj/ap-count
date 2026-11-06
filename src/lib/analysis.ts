@@ -1,4 +1,5 @@
 import type { APPortfolio, RuleIssue, SourceRow, AnalysisResult, AnalyzedRow, ProjectCount, APCount } from './types'
+import { findAssignmentConflicts } from './conflicts'
 
 const validProject = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 const MAX_PROJECT = Number.MAX_SAFE_INTEGER
@@ -58,26 +59,14 @@ export function validateRules(input: unknown): RuleIssue[] {
     for (const project of rule.include) if (excluded.has(project)) issues.push({ code: 'include-exclude', message: `Project ${project} cannot be included and excluded in the same portfolio.`, ruleIds: ref, project })
   }
   if (issues.length) return issues
-  const owners = new Map<number, APPortfolio>()
-  for (const rule of rules) for (const project of rule.include) {
-    const previous = owners.get(project)
-    if (previous && previous.id !== rule.id) issues.push({ code: 'duplicate-include', message: `Project ${project} is explicitly assigned to both ${previous.name} and ${rule.name}.`, ruleIds: [previous.id, rule.id], project })
-    owners.set(project, rule)
-  }
-  const segments = segmentsFor(rules)
-  // Keep all active intervals so a long interval cannot hide a later conflict.
-  let active: Segment[] = []
-  const reported = new Set<string>()
-  for (const segment of segments) {
-    active = active.filter(previous => previous.end >= segment.start)
-    for (const previous of active) {
-      if (previous.rule.id === segment.rule.id) continue
-      const pair = JSON.stringify([previous.rule.id, segment.rule.id].sort())
-      if (reported.has(pair)) continue
-      reported.add(pair)
-      issues.push({ code: 'overlap', message: `${previous.rule.name} and ${segment.rule.name} both cover project ${segment.start}. Add an explicit assignment or adjust the ranges/exclusions.`, ruleIds: [previous.rule.id, segment.rule.id], project: segment.start })
-    }
-    active.push(segment)
+  for (const conflict of findAssignmentConflicts(rules)) {
+    const duplicateInclude = conflict.end === conflict.start && conflict.owners.every(owner => rules.find(rule => rule.id === owner.id)!.include.includes(conflict.start))
+    const interval = conflict.end === null ? `${conflict.start}+` : conflict.end === conflict.start ? String(conflict.start) : `${conflict.start}–${conflict.end}`
+    issues.push({
+      code: duplicateInclude ? 'duplicate-include' : 'overlap',
+      message: `Project${conflict.start === conflict.end ? '' : 's'} ${interval} ${conflict.start === conflict.end ? 'is' : 'are'} assigned to ${conflict.owners.map(owner => owner.name).join(', ')}. Choose which AP clerk is responsible before saving.`,
+      ruleIds: conflict.owners.map(owner => owner.id), project: conflict.start,
+    })
   }
   return issues
 }
