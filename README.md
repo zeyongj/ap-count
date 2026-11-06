@@ -77,6 +77,8 @@ npm test
 npm run build
 ```
 
+After a Vercel production build, run `npm run check:functions` to boot the emitted API modules and verify anonymous permissions. This checks Node ESM packaging as well as the source-level tests.
+
 See `.env.example` for configuration names. `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is intentionally public and is included in the frontend bundle. `CLERK_SECRET_KEY`, `AP_COUNT_ADMIN_EMAIL`, and Blob credentials are server-only. Never add a browser-exposed `VITE_` or `NEXT_PUBLIC_` prefix to a secret. Blob authentication supports the managed `BLOB_READ_WRITE_TOKEN`, or a `BLOB_STORE_ID` with Vercel OIDC authentication. Retain generated credentials only in ignored environment files or Vercel environment settings. Do not print secrets in logs, commit `.env.local`, or publish downloaded environment files as artifacts.
 
 Use `npm run verify:attachments -- /absolute/path/to/ap.xls /absolute/path/to/ap.csv` to compare local source files without committing them. The optional script reads files locally; use synthetic fixtures in CI.
@@ -107,6 +109,8 @@ Rules are compiled once per analysis into an explicit-project lookup and sorted 
 ### Deploy to Vercel
 
 Import this repository into a Vercel account with suitable plan terms. Framework: **Vite**; install: `npm ci`; build: `npm run build`; output: `dist`. These values are included in `vercel.json`. Connect Clerk, configure its public/server keys and the server-side administrator allowlist, and attach a **private** Vercel Blob store. Keep production and development/preview storage separate. Git integration can deploy `main` automatically.
+
+The current personal demo uses the Clerk development instance provisioned by Marketplace. For a production Clerk instance, complete its production-domain/DNS setup. No paid authentication add-ons are enabled.
 
 The API requires environment configuration; a static-only copy cannot save shared rules. Shared reads use no-store responses. Writes require a verified administrator session, strict rule validation, and an unchanged cloud revision; conditional Blob writes enforce the revision even when saves arrive concurrently. Do not change these safeguards to make an unauthorized or stale save succeed.
 

@@ -1,5 +1,5 @@
 import type { APPortfolio, RuleIssue, SourceRow, AnalysisResult, AnalyzedRow, ProjectCount, APCount } from './types'
-import { findAssignmentConflicts } from './conflicts'
+import { findAssignmentConflicts } from './conflicts.js'
 
 const validProject = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 const MAX_PROJECT = Number.MAX_SAFE_INTEGER
