@@ -9,7 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:attachments": "tsx scripts/verify-attachments.ts"
+    "verify:attachments": "node --import tsx scripts/verify-attachments.ts"
   },
   "dependencies": {
     "react": "^19.2.0",
