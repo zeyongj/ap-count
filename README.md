@@ -24,7 +24,7 @@ This deployment is a **personal, non-commercial demonstration**. Vercel's free [
 - The selected header row and rows above it are excluded. Completely blank data rows are skipped. Nonblank totals, footers, or notes below the header count as records, so remove them from the source if they are not invoices.
 - The project number comes from the selected Company column: use the first bracketed digit group such as `[5419]`; otherwise use the first digit group anywhere in the value. A missing or unparseable project remains Unknown.
 - The original Python's seven AP portfolios, all exceptions, and intentional gaps are preserved. For example, projects **5217** and **5338** remain Unknown with the default rules.
-- Python evaluates the AP conditions in order: **5255 and 5266 belong to Jason Jin**, because his range matches before Steven's explicit include condition is reached. The default configuration removes these two unreachable Steven inclusions so that the compiled, order-independent rules reproduce Python's actual output. This normalization changes no assignment.
+- Python evaluates the AP conditions in order: **5255 and 5266 belong to AP1**, because his range matches before AP2's explicit include condition is reached. The default configuration removes these two unreachable Steven inclusions so that the compiled, order-independent rules reproduce Python's actual output. This normalization changes no assignment.
 - Projects without a matching portfolio are assigned to **Unknown**, never silently discarded. Project counts include a blank-project bucket for records with no parsed number. The project metric counts only known project numbers.
 - AP counts include configured clerks with zero invoices. This makes an empty portfolio visible; the original Python's `value_counts()` omitted zero-count clerks. Positive counts and the grand total are unchanged.
 - CSV count headers are `ProjectNumber,InvoiceCount` and `AP,InvoiceCount`. Unknown export also includes original source fields, `SourceRow`, parsed project, AP, and reason. CSV files use UTF-8 with a BOM for Excel, RFC 4180 quoting, and formula-injection protection for text cells.
@@ -140,7 +140,7 @@ AP Count 用于按 **AP clerk** 与 **project** 统计 invoice 数量。支持�
 
 从 Company 文本中优先提取 `[5419]` 形式的第一个括号数字，否则提取第一个数字串。未能提取项目号，或项目号没有对应 AP，均归入 Unknown，数据不会被丢弃。默认分配与提供的 Python 一致，包括所有例外项目和未分配的间隙，例如 5217、5338。页面也会显示数量为零的 AP，方便检查 portfolio。
 
-原 Python 按条件顺序判断：**5255、5266 实际归 Jason Jin**，因为先命中了 Jason 的范围，后面的 Steven 包含列表不会再执行。默认配置因此从 Steven 列表移除了这两项不可达规则，使新的规则引擎保留原 Python 的实际结果。
+原 Python 按条件顺序判断：**5255、5266 实际归 AP1**，因为先命中了 AP1 的范围，后面的 AP2 包含列表不会再执行。默认配置因此从 AP2 列表移除了这两项不可达规则，使新的规则引擎保留原 Python 的实际结果。
 
 ### 修改与共享 portfolio
 
