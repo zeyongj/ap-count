@@ -29,7 +29,7 @@ This deployment is a **personal, non-commercial demonstration**. Vercel's free [
 
 Each clerk has a name, project ranges, explicit included projects, and excluded projects.
 
-- Use `5006-5216` for an inclusive range, `5791+` for no upper limit, or `5200` for one project. Separate multiple ranges with commas or newlines.
+- Enter **From = 5006** and **To = 5216** for an inclusive range. For `5791+`, enter **From = 5791** and leave **To** empty. Set both fields to `5200` for one project. Choose **Add range** for another interval.
 - Separate included/excluded project IDs with commas, spaces, or newlines. All project IDs must be nonnegative safe whole numbers.
 - **Explicit included projects take priority over ranges.** To transfer one project, remove any previous explicit inclusion and add it to the new clerk's included list. You do not need to split the original clerk's range.
 - An exclusion removes a project from that clerk's ranges. A project cannot appear in both include and exclude for the same clerk.
@@ -111,7 +111,7 @@ AP Count 用于按 **AP clerk** 与 **project** 统计 invoice 数量。支持�
 
 ### 修改与共享 portfolio
 
-每位 AP 可设置姓名、项目范围、明确包含项目和排除项目。范围示例：`5006-5216`、`5791+`，多段以逗号或换行分隔；项目列表可用逗号、空格或换行分隔。
+每位 AP 可设置姓名、项目范围、明确包含项目和排除项目。例如，起始填 `5006`、截止填 `5216`，表示包含两端的范围；起始填 `5791`、截止留空，表示 `5791+`。单个项目可在起始、截止都填 `5200`。点击“添加范围”可设置另一段范围；明确包含/排除的项目列表可用逗号、空格或换行分隔。
 
 **明确包含的项目优先于范围。** 转移单个项目时，将该项目加入新 AP 的包含列表；如果原 AP 也明确包含该项目，需要先移除原明确分配。同一个 AP 不能同时包含和排除同一个项目。冲突分配、有效范围重叠、重复姓名或无效输入会阻止保存；允许保留未分配项目，并在结果中显示为 Unknown。
 
