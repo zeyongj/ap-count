@@ -55,11 +55,21 @@ import "./styles.css";
 import Manual from "./components/Manual";
 
 type Language = "en" | "zh";
+type AppPage = "count" | "manual";
 type Tab = "clerks" | "projects" | "unknown";
+const pageFromHash = (): AppPage =>
+  window.location.hash.startsWith("#manual") ? "manual" : "count";
+function focusPage(page: AppPage) {
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document
+    .getElementById(page === "manual" ? "manual-title" : "count-title")
+    ?.focus({ preventScroll: true });
+}
 const PAGE_SIZE = 10;
 const copy = {
   en: {
     language: "Language",
+    pageNavigation: "Page navigation",
     private: "Private by design",
     eyebrow: "ACCOUNTS PAYABLE WORKSPACE",
     title: "Every invoice, accounted for.",
@@ -256,6 +266,7 @@ const copy = {
   },
   zh: {
     language: "语言",
+    pageNavigation: "页面导航",
     private: "注重数据隐私",
     eyebrow: "应付账款工作台",
     title: "每一张发票，都清晰有数。",
@@ -1173,6 +1184,7 @@ function PortfolioEditor({
 
 export default function App() {
   const [language, setLanguage] = useState<Language>("en");
+  const [activePage, setActivePage] = useState<AppPage>(pageFromHash);
   const t: Copy = copy[language];
   const { isLoaded: authLoaded, isSignedIn, getToken, userId } = useAuth();
   const [shared, setShared] = useState<SharedPortfolio | null>(null);
@@ -1334,12 +1346,24 @@ export default function App() {
     };
   }, [authLoaded, isSignedIn, userId, getToken, permissionRequest]);
   useEffect(() => {
+    const onHashChange = () => setActivePage(pageFromHash());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  useEffect(() => {
+    focusPage(activePage);
+  }, [activePage]);
+  useEffect(() => {
     document.documentElement.lang = language === "en" ? "en" : "zh-CN";
     document.title =
-      language === "en"
-        ? "AP Count — Invoice workload analysis"
-        : "AP Count — 发票工作量统计";
-  }, [language]);
+      activePage === "manual"
+        ? language === "en"
+          ? "AP Count — Manual"
+          : "AP Count — 使用手册"
+        : language === "en"
+          ? "AP Count — Invoice workload analysis"
+          : "AP Count — 发票工作量统计";
+  }, [language, activePage]);
   function selectWorkbook(
     next: ParsedWorkbook,
     name: string,
@@ -1580,653 +1604,590 @@ export default function App() {
           </div>
         </div>
       </header>
+      <nav className="page-navigation" aria-label={t.pageNavigation}>
+        <a
+          href="#count"
+          aria-current={activePage === "count" ? "page" : undefined}
+          onClick={(event) => {
+            if (activePage === "count") {
+              event.preventDefault();
+              focusPage("count");
+            }
+          }}
+        >
+          <BarChart3 aria-hidden="true" />
+          AP Count
+        </a>
+        <a
+          href="#manual"
+          aria-current={activePage === "manual" ? "page" : undefined}
+          onClick={(event) => {
+            if (activePage === "manual") {
+              event.preventDefault();
+              focusPage("manual");
+            }
+          }}
+        >
+          <BookOpen aria-hidden="true" />
+          {t.guide}
+        </a>
+      </nav>
       <main>
-        <div className="intro">
-          <div>
-            <p className="eyebrow">{t.eyebrow}</p>
-            <h1>{t.title}</h1>
-            <p>{t.subtitle}</p>
-          </div>
-          <div className="intro-actions">
-            <a className="manual-link" href="#manual">
-              <BookOpen />
-              {t.guide}
-            </a>
-            <button disabled={!shared} onClick={openPortfolioEditor}>
-              <Settings2 />
-              {canEdit && !sharedError ? t.portfolios : t.viewPortfolios}
-            </button>
-          </div>
-        </div>
-        {sharedError ? (
-          <div className="notice error" role="alert">
-            <TriangleAlert />
-            <div>{shared ? t.rulesStale : t.rulesLoadFailure}</div>
-            <button
-              className="small"
-              disabled={loadingRules}
-              onClick={() => void refreshShared()}
-            >
-              {loadingRules ? t.syncingRules : t.retry}
-            </button>
-          </div>
-        ) : null}
-        {permissionError ? (
-          <div className="notice" role="status">
-            <Info />
-            <div>{t.permissionUnavailable}</div>
-            <button
-              className="small"
-              disabled={checkingPermission}
-              onClick={() => setPermissionRequest((value) => value + 1)}
-            >
-              {t.retry}
-            </button>
-          </div>
-        ) : null}
-        {error ? (
-          <div className="notice error" role="alert">
-            <TriangleAlert />
+        <div className="page-view" hidden={activePage !== "count"}>
+          <div className="intro">
             <div>
-              {t[error.key]}
-              {error.detail ? (
-                <small>
-                  {error.detail}
-                  <br />
-                  {t.fileReadDetail}
-                </small>
-              ) : null}
+              <p className="eyebrow">{t.eyebrow}</p>
+              <h1 id="count-title" tabIndex={-1}>
+                {t.title}
+              </h1>
+              <p>{t.subtitle}</p>
             </div>
-            <button
-              className="ghost"
-              onClick={() => setError(null)}
-              aria-label={t.clearNotice}
-            >
-              <X />
-            </button>
+            <div className="intro-actions">
+              <button disabled={!shared} onClick={openPortfolioEditor}>
+                <Settings2 />
+                {canEdit && !sharedError ? t.portfolios : t.viewPortfolios}
+              </button>
+            </div>
           </div>
-        ) : null}
-        {notice ? (
-          <div
-            className={`notice ${notice === "saved" ? "success" : ""}`}
-            role="status"
-          >
-            <Info />
-            <div>{t[notice]}</div>
-            <button
-              className="ghost"
-              onClick={() => setNotice(null)}
-              aria-label={t.clearNotice}
-            >
-              <X />
-            </button>
-          </div>
-        ) : null}
-        <div className="workspace">
-          <aside className="left-column">
-            <section className="panel">
-              <div className="panel-body">
-                <div className="panel-heading">
-                  <div className="panel-title">
-                    <FileSpreadsheet />
-                    <h2>{t.importTitle}</h2>
-                  </div>
-                  <span className="step">01</span>
-                </div>
-                <label
-                  className={`drop-zone ${dragging ? "dragging" : ""}`}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setDragging(true);
-                  }}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setDragging(false);
-                    if (event.dataTransfer.files.length !== 1)
-                      setError({ key: "onlyOne" });
-                    else void loadFile(event.dataTransfer.files[0]);
-                  }}
-                >
-                  <input
-                    ref={fileInput}
-                    className="hidden-input"
-                    type="file"
-                    accept=".xls,.xlsx,.csv"
-                    aria-label={t.browse}
-                    onChange={(event) => {
-                      void loadFile(event.target.files?.[0]);
-                      event.target.value = "";
-                    }}
-                  />
-                  <span className="upload-illustration">
-                    {busy ? <LoaderCircle className="spinner" /> : <Upload />}
-                  </span>
-                  <strong>{busy ? t.loading : t.drop}</strong>
-                  <p>{t.dropSub}</p>
-                  <span className="browse">
-                    {t.browse}
-                    <ArrowRight size={13} />
-                  </span>
-                  <div className="file-types">
-                    <span>.XLS</span>
-                    <span>.XLSX</span>
-                    <span>.CSV</span>
-                  </div>
-                </label>
-                <p className="upload-note">
-                  <LockKeyhole />
-                  {t.privacy}
-                </p>
-                {filename ? (
-                  <div className="file-card">
-                    <FileSpreadsheet />
-                    <div>
-                      <strong>{filename}</strong>
-                      <small>
-                        {isDemo
-                          ? t.demoBadge
-                          : `${fileSize < 1024 ? `${fileSize} B` : `${Math.round(fileSize / 1024)} KB`}`}{" "}
-                        · {t.fileLimit}
-                      </small>
-                    </div>
-                    <button
-                      className="icon-button ghost"
-                      onClick={removeFile}
-                      aria-label={t.reset}
-                    >
-                      <X />
-                    </button>
-                  </div>
+          {sharedError ? (
+            <div className="notice error" role="alert">
+              <TriangleAlert />
+              <div>{shared ? t.rulesStale : t.rulesLoadFailure}</div>
+              <button
+                className="small"
+                disabled={loadingRules}
+                onClick={() => void refreshShared()}
+              >
+                {loadingRules ? t.syncingRules : t.retry}
+              </button>
+            </div>
+          ) : null}
+          {permissionError ? (
+            <div className="notice" role="status">
+              <Info />
+              <div>{t.permissionUnavailable}</div>
+              <button
+                className="small"
+                disabled={checkingPermission}
+                onClick={() => setPermissionRequest((value) => value + 1)}
+              >
+                {t.retry}
+              </button>
+            </div>
+          ) : null}
+          {error ? (
+            <div className="notice error" role="alert">
+              <TriangleAlert />
+              <div>
+                {t[error.key]}
+                {error.detail ? (
+                  <small>
+                    {error.detail}
+                    <br />
+                    {t.fileReadDetail}
+                  </small>
                 ) : null}
-                {workbook ? (
-                  <div className="mapping">
-                    <div className="mapping-duo">
+              </div>
+              <button
+                className="ghost"
+                onClick={() => setError(null)}
+                aria-label={t.clearNotice}
+              >
+                <X />
+              </button>
+            </div>
+          ) : null}
+          {notice ? (
+            <div
+              className={`notice ${notice === "saved" ? "success" : ""}`}
+              role="status"
+            >
+              <Info />
+              <div>{t[notice]}</div>
+              <button
+                className="ghost"
+                onClick={() => setNotice(null)}
+                aria-label={t.clearNotice}
+              >
+                <X />
+              </button>
+            </div>
+          ) : null}
+          <div className="workspace">
+            <aside className="left-column">
+              <section className="panel">
+                <div className="panel-body">
+                  <div className="panel-heading">
+                    <div className="panel-title">
+                      <FileSpreadsheet />
+                      <h2>{t.importTitle}</h2>
+                    </div>
+                    <span className="step">01</span>
+                  </div>
+                  <label
+                    className={`drop-zone ${dragging ? "dragging" : ""}`}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setDragging(true);
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      setDragging(false);
+                      if (event.dataTransfer.files.length !== 1)
+                        setError({ key: "onlyOne" });
+                      else void loadFile(event.dataTransfer.files[0]);
+                    }}
+                  >
+                    <input
+                      ref={fileInput}
+                      className="hidden-input"
+                      type="file"
+                      accept=".xls,.xlsx,.csv"
+                      aria-label={t.browse}
+                      onChange={(event) => {
+                        void loadFile(event.target.files?.[0]);
+                        event.target.value = "";
+                      }}
+                    />
+                    <span className="upload-illustration">
+                      {busy ? <LoaderCircle className="spinner" /> : <Upload />}
+                    </span>
+                    <strong>{busy ? t.loading : t.drop}</strong>
+                    <p>{t.dropSub}</p>
+                    <span className="browse">
+                      {t.browse}
+                      <ArrowRight size={13} />
+                    </span>
+                    <div className="file-types">
+                      <span>.XLS</span>
+                      <span>.XLSX</span>
+                      <span>.CSV</span>
+                    </div>
+                  </label>
+                  <p className="upload-note">
+                    <LockKeyhole />
+                    {t.privacy}
+                  </p>
+                  {filename ? (
+                    <div className="file-card">
+                      <FileSpreadsheet />
+                      <div>
+                        <strong>{filename}</strong>
+                        <small>
+                          {isDemo
+                            ? t.demoBadge
+                            : `${fileSize < 1024 ? `${fileSize} B` : `${Math.round(fileSize / 1024)} KB`}`}{" "}
+                          · {t.fileLimit}
+                        </small>
+                      </div>
+                      <button
+                        className="icon-button ghost"
+                        onClick={removeFile}
+                        aria-label={t.reset}
+                      >
+                        <X />
+                      </button>
+                    </div>
+                  ) : null}
+                  {workbook ? (
+                    <div className="mapping">
+                      <div className="mapping-duo">
+                        <label className="field">
+                          {t.workbook}
+                          <select
+                            value={sheetIndex}
+                            onChange={(event) =>
+                              changeSheet(Number(event.target.value))
+                            }
+                          >
+                            {workbook.sheets.map((sheet, i) => (
+                              <option key={`${sheet.name}-${i}`} value={i}>
+                                {sheet.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="field">
+                          {t.header}
+                          <input
+                            type="number"
+                            min={1}
+                            max={sheet?.rows.length || 1}
+                            value={headerRow + 1}
+                            onChange={(event) =>
+                              changeHeader(event.target.value)
+                            }
+                          />
+                        </label>
+                      </div>
                       <label className="field">
-                        {t.workbook}
+                        {t.company}
                         <select
-                          value={sheetIndex}
-                          onChange={(event) =>
-                            changeSheet(Number(event.target.value))
-                          }
+                          value={companyColumn}
+                          onChange={(event) => {
+                            setCompanyColumn(Number(event.target.value));
+                            setPage(0);
+                            setUnknownPage(0);
+                          }}
                         >
-                          {workbook.sheets.map((sheet, i) => (
-                            <option key={`${sheet.name}-${i}`} value={i}>
-                              {sheet.name}
+                          <option value={-1}>{t.chooseColumn}</option>
+                          {dataset?.headers.map((header, i) => (
+                            <option key={i} value={i}>
+                              {header}
                             </option>
                           ))}
                         </select>
                       </label>
-                      <label className="field">
-                        {t.header}
-                        <input
-                          type="number"
-                          min={1}
-                          max={sheet?.rows.length || 1}
-                          value={headerRow + 1}
-                          onChange={(event) => changeHeader(event.target.value)}
-                        />
-                      </label>
+                      <p className="count-note">
+                        {dataset
+                          ? `${formatted(dataset.rows.length)} ${t.rows} · ${dataset.skippedBlankRows} ${t.blankRows}`
+                          : t.badHeader}
+                        <br />
+                        {t.countScope}
+                      </p>
                     </div>
-                    <label className="field">
-                      {t.company}
-                      <select
-                        value={companyColumn}
-                        onChange={(event) => {
-                          setCompanyColumn(Number(event.target.value));
-                          setPage(0);
-                          setUnknownPage(0);
+                  ) : (
+                    <>
+                      <div className="divider-text">{t.or}</div>
+                      <button
+                        className="demo-button"
+                        onClick={() => {
+                          loadId.current++;
+                          setBusy(false);
+                          selectWorkbook(demo, t.demoName, 0, true);
                         }}
                       >
-                        <option value={-1}>{t.chooseColumn}</option>
-                        {dataset?.headers.map((header, i) => (
-                          <option key={i} value={i}>
-                            {header}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <p className="count-note">
-                      {dataset
-                        ? `${formatted(dataset.rows.length)} ${t.rows} · ${dataset.skippedBlankRows} ${t.blankRows}`
-                        : t.badHeader}
-                      <br />
-                      {t.countScope}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="divider-text">{t.or}</div>
-                    <button
-                      className="demo-button"
-                      onClick={() => {
-                        loadId.current++;
-                        setBusy(false);
-                        selectWorkbook(demo, t.demoName, 0, true);
-                      }}
-                    >
-                      <BarChart3 />
-                      {t.demo}
-                    </button>
-                  </>
-                )}
-              </div>
-            </section>
-            <section className="panel portfolio-panel">
-              <div className="panel-body">
-                <div className="panel-heading">
-                  <div className="panel-title">
-                    <Users />
-                    <h2>{t.rulesTitle}</h2>
-                  </div>
-                  <span className="step">02</span>
-                </div>
-                <div className="rules-summary">
-                  <span>{t.activeClerks}</span>
-                  <strong>{shared ? rules.length : "—"}</strong>
-                </div>
-                <div className="rules-summary">
-                  <span>{t.distribution}</span>
-                  <strong>
-                    {loadingRules && !shared ? t.syncingRules : t.sharedRules}
-                  </strong>
-                </div>
-                <div className="shared-rule-status">
-                  <ShieldCheck aria-hidden="true" />
-                  <div>
-                    <strong>{canEdit ? t.admin : t.readOnlyAccess}</strong>
-                    <span>
-                      {shared?.updatedAt
-                        ? `${t.lastSaved}: ${new Intl.DateTimeFormat(language === "en" ? "en-CA" : "zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(shared.updatedAt))}`
-                        : shared
-                          ? t.notYetUpdated
-                          : t.syncingRules}
-                    </span>
-                  </div>
-                </div>
-                <p className="rule-info">{t.rulesNote}</p>
-                <button
-                  className="text-button refresh-rules"
-                  disabled={loadingRules}
-                  onClick={() => void refreshShared()}
-                >
-                  {loadingRules ? (
-                    <LoaderCircle className="spinner" />
-                  ) : (
-                    <RotateCcw />
+                        <BarChart3 />
+                        {t.demo}
+                      </button>
+                    </>
                   )}
-                  {t.refreshRules}
-                </button>
-                <button
-                  className="full-width"
-                  disabled={!shared}
-                  onClick={openPortfolioEditor}
-                >
-                  <Settings2 />
-                  {canEdit && !sharedError ? t.editRules : t.viewPortfolios}
-                </button>
-              </div>
-            </section>
-          </aside>
-          <div className="results" aria-busy={busy}>
-            <div className="metrics">
-              {metricLabels.map((label, i) => {
-                const Icon = metricIcons[i];
-                return (
-                  <div className="panel metric" key={i}>
-                    <div className="metric-label">
-                      <span>{label}</span>
-                      <Icon aria-hidden="true" />
+                </div>
+              </section>
+              <section className="panel portfolio-panel">
+                <div className="panel-body">
+                  <div className="panel-heading">
+                    <div className="panel-title">
+                      <Users />
+                      <h2>{t.rulesTitle}</h2>
                     </div>
-                    <p
-                      className={`metric-value ${metricValues[i] === undefined ? "muted" : i === 0 ? "blue" : i === 3 && (metricValues[i] ?? 0) > 0 ? "amber" : ""}`}
-                      data-testid={`metric-${i}`}
-                    >
-                      {metricValues[i] === undefined
-                        ? "—"
-                        : formatted(metricValues[i]!)}
-                    </p>
-                    <p className="metric-foot">{metricFoots[i]}</p>
+                    <span className="step">02</span>
                   </div>
-                );
-              })}
-            </div>
-            <section className="panel" aria-labelledby="results-title">
-              <div className="results-header">
-                <h2 id="results-title">
-                  <BarChart3 />
-                  {t.resultTitle}
-                </h2>
-                <span
-                  className={`result-status ${result ? "ready" : ""}`}
-                  role="status"
-                >
-                  <span className="status-dot" />
-                  {result
-                    ? t.ready
-                    : !shared && loadingRules
-                      ? t.syncingRules
-                      : t.awaiting}
-                </span>
-              </div>
-              {result ? (
-                <>
-                  <div
-                    className="tabs"
-                    role="tablist"
-                    aria-label={t.resultTitle}
+                  <div className="rules-summary">
+                    <span>{t.activeClerks}</span>
+                    <strong>{shared ? rules.length : "—"}</strong>
+                  </div>
+                  <div className="rules-summary">
+                    <span>{t.distribution}</span>
+                    <strong>
+                      {loadingRules && !shared ? t.syncingRules : t.sharedRules}
+                    </strong>
+                  </div>
+                  <div className="shared-rule-status">
+                    <ShieldCheck aria-hidden="true" />
+                    <div>
+                      <strong>{canEdit ? t.admin : t.readOnlyAccess}</strong>
+                      <span>
+                        {shared?.updatedAt
+                          ? `${t.lastSaved}: ${new Intl.DateTimeFormat(language === "en" ? "en-CA" : "zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(shared.updatedAt))}`
+                          : shared
+                            ? t.notYetUpdated
+                            : t.syncingRules}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="rule-info">{t.rulesNote}</p>
+                  <button
+                    className="text-button refresh-rules"
+                    disabled={loadingRules}
+                    onClick={() => void refreshShared()}
                   >
-                    {(["clerks", "projects", "unknown"] as Tab[]).map(
-                      (key, i) => (
-                        <button
-                          key={key}
-                          role="tab"
-                          id={`tab-${key}`}
-                          aria-controls={`panel-${key}`}
-                          aria-selected={tab === key}
-                          tabIndex={tab === key ? 0 : -1}
-                          className={tab === key ? "active" : ""}
-                          onClick={() => setTab(key)}
-                          onKeyDown={(event) => {
-                            if (
-                              event.key === "ArrowRight" ||
-                              event.key === "ArrowLeft"
-                            ) {
-                              event.preventDefault();
-                              const keys: Tab[] = [
-                                "clerks",
-                                "projects",
-                                "unknown",
-                              ];
-                              const next =
-                                keys[
-                                  (i + (event.key === "ArrowRight" ? 1 : 2)) % 3
-                                ];
-                              setTab(next);
-                              document.getElementById(`tab-${next}`)?.focus();
-                            }
-                          }}
-                        >
-                          {key === "clerks"
-                            ? t.byClerk
-                            : key === "projects"
-                              ? t.byProject
-                              : t.review}
-                          <span className="badge">
-                            {key === "clerks"
-                              ? rules.length
-                              : key === "projects"
-                                ? result.projects.length
-                                : result.unknown.length}
-                          </span>
-                        </button>
-                      ),
+                    {loadingRules ? (
+                      <LoaderCircle className="spinner" />
+                    ) : (
+                      <RotateCcw />
                     )}
-                  </div>
-                  <div
-                    className="results-inner"
-                    id={`panel-${tab}`}
-                    role="tabpanel"
-                    aria-labelledby={`tab-${tab}`}
+                    {t.refreshRules}
+                  </button>
+                  <button
+                    className="full-width"
+                    disabled={!shared}
+                    onClick={openPortfolioEditor}
                   >
-                    {tab === "clerks" ? (
-                      <>
-                        <div className="ap-list">
-                          {result.clerks.map((clerk) => (
-                            <div className="ap-row" key={clerk.id ?? "unknown"}>
-                              <div className="ap-person">
-                                <span className="avatar">
-                                  {clerk.id
-                                    ? clerk.ap
-                                        .split(/\s+/)
-                                        .map((word) => word[0])
-                                        .slice(0, 2)
-                                        .join("")
-                                    : "?"}
-                                </span>
-                                <span>
-                                  {clerk.id ? clerk.ap : t.unknownCount}
-                                </span>
-                              </div>
-                              <div className="bar-track">
-                                <div
-                                  className={`bar-fill ${clerk.id === null ? "unknown" : ""}`}
-                                  style={{ width: `${clerk.share * 100}%` }}
-                                />
-                              </div>
-                              <span className="ap-number">
-                                {formatted(clerk.invoiceCount)}
-                              </span>
-                              <span className="ap-percentage">
-                                {(clerk.share * 100).toFixed(1)}%
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="export-line">
-                          <span>{t.exportNote}</span>
+                    <Settings2 />
+                    {canEdit && !sharedError ? t.editRules : t.viewPortfolios}
+                  </button>
+                </div>
+              </section>
+            </aside>
+            <div className="results" aria-busy={busy}>
+              <div className="metrics">
+                {metricLabels.map((label, i) => {
+                  const Icon = metricIcons[i];
+                  return (
+                    <div className="panel metric" key={i}>
+                      <div className="metric-label">
+                        <span>{label}</span>
+                        <Icon aria-hidden="true" />
+                      </div>
+                      <p
+                        className={`metric-value ${metricValues[i] === undefined ? "muted" : i === 0 ? "blue" : i === 3 && (metricValues[i] ?? 0) > 0 ? "amber" : ""}`}
+                        data-testid={`metric-${i}`}
+                      >
+                        {metricValues[i] === undefined
+                          ? "—"
+                          : formatted(metricValues[i]!)}
+                      </p>
+                      <p className="metric-foot">{metricFoots[i]}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <section className="panel" aria-labelledby="results-title">
+                <div className="results-header">
+                  <h2 id="results-title">
+                    <BarChart3 />
+                    {t.resultTitle}
+                  </h2>
+                  <span
+                    className={`result-status ${result ? "ready" : ""}`}
+                    role="status"
+                  >
+                    <span className="status-dot" />
+                    {result
+                      ? t.ready
+                      : !shared && loadingRules
+                        ? t.syncingRules
+                        : t.awaiting}
+                  </span>
+                </div>
+                {result ? (
+                  <>
+                    <div
+                      className="tabs"
+                      role="tablist"
+                      aria-label={t.resultTitle}
+                    >
+                      {(["clerks", "projects", "unknown"] as Tab[]).map(
+                        (key, i) => (
                           <button
-                            className="text-button"
-                            onClick={() =>
-                              download(
-                                apCountsCsv(result),
-                                "invoices_per_ap.csv",
-                              )
-                            }
+                            key={key}
+                            role="tab"
+                            id={`tab-${key}`}
+                            aria-controls={`panel-${key}`}
+                            aria-selected={tab === key}
+                            tabIndex={tab === key ? 0 : -1}
+                            className={tab === key ? "active" : ""}
+                            onClick={() => setTab(key)}
+                            onKeyDown={(event) => {
+                              if (
+                                event.key === "ArrowRight" ||
+                                event.key === "ArrowLeft"
+                              ) {
+                                event.preventDefault();
+                                const keys: Tab[] = [
+                                  "clerks",
+                                  "projects",
+                                  "unknown",
+                                ];
+                                const next =
+                                  keys[
+                                    (i + (event.key === "ArrowRight" ? 1 : 2)) %
+                                      3
+                                  ];
+                                setTab(next);
+                                document.getElementById(`tab-${next}`)?.focus();
+                              }
+                            }}
                           >
-                            <ArrowDownToLine />
-                            {t.exportAp}
-                          </button>
-                        </div>
-                      </>
-                    ) : null}
-                    {tab === "projects" ? (
-                      <>
-                        <div className="table-tools">
-                          <label className="search-box">
-                            <Search />
-                            <input
-                              value={search}
-                              onChange={(event) => {
-                                setSearch(event.target.value);
-                                setPage(0);
-                              }}
-                              placeholder={t.search}
-                              aria-label={t.search}
-                            />
-                          </label>
-                          <button
-                            className="small"
-                            onClick={() =>
-                              download(
-                                projectCountsCsv(result),
-                                "invoices_per_project.csv",
-                              )
-                            }
-                          >
-                            <ArrowDownToLine />
-                            {t.exportProject}
-                          </button>
-                        </div>
-                        <div className="table-wrap">
-                          <table>
-                            <thead>
-                              <tr>
-                                <th scope="col">
-                                  <button
-                                    onClick={() => flipSort("projectNumber")}
-                                  >
-                                    {t.project}
-                                    <ArrowDownUp />
-                                  </button>
-                                </th>
-                                <th scope="col">{t.ap}</th>
-                                <th scope="col" className="align-right">
-                                  <button
-                                    onClick={() => flipSort("invoiceCount")}
-                                  >
-                                    {t.invoices}
-                                    <ArrowDownUp />
-                                  </button>
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredProjects
-                                .slice(
-                                  displayPage * PAGE_SIZE,
-                                  (displayPage + 1) * PAGE_SIZE,
-                                )
-                                .map((row) => (
-                                  <tr key={row.projectNumber ?? "unknown"}>
-                                    <td>{rowName(row)}</td>
-                                    <td
-                                      className={
-                                        row.ap === "Unknown"
-                                          ? "unknown-cell"
-                                          : ""
-                                      }
-                                    >
-                                      {row.ap === "Unknown"
-                                        ? t.unknownCount
-                                        : row.ap}
-                                    </td>
-                                    <td className="align-right">
-                                      {formatted(row.invoiceCount)}
-                                    </td>
-                                  </tr>
-                                ))}
-                              {filteredProjects.length === 0 ? (
-                                <tr>
-                                  <td colSpan={3}>{t.noMatches}</td>
-                                </tr>
-                              ) : null}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="pagination">
-                          <span>
-                            {t.rowsShown}{" "}
-                            {filteredProjects.length
-                              ? displayPage * PAGE_SIZE + 1
-                              : 0}
-                            –
-                            {Math.min(
-                              (displayPage + 1) * PAGE_SIZE,
-                              filteredProjects.length,
-                            )}{" "}
-                            / {formatted(filteredProjects.length)}
-                          </span>
-                          <div className="pagination-controls">
-                            <button
-                              disabled={displayPage === 0}
-                              onClick={() => setPage(displayPage - 1)}
-                              aria-label={t.previous}
-                            >
-                              <ChevronLeft />
-                            </button>
-                            <span>
-                              {displayPage + 1} / {maxPage + 1}
+                            {key === "clerks"
+                              ? t.byClerk
+                              : key === "projects"
+                                ? t.byProject
+                                : t.review}
+                            <span className="badge">
+                              {key === "clerks"
+                                ? rules.length
+                                : key === "projects"
+                                  ? result.projects.length
+                                  : result.unknown.length}
                             </span>
-                            <button
-                              disabled={displayPage >= maxPage}
-                              onClick={() => setPage(displayPage + 1)}
-                              aria-label={t.next}
-                            >
-                              <ChevronRight />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    ) : null}
-                    {tab === "unknown" ? (
-                      result.unknown.length ? (
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    <div
+                      className="results-inner"
+                      id={`panel-${tab}`}
+                      role="tabpanel"
+                      aria-labelledby={`tab-${tab}`}
+                    >
+                      {tab === "clerks" ? (
                         <>
-                          <p className="section-note">{t.unknownNote}</p>
-                          <div className="table-tools">
-                            <span className="subtle-label">
-                              {result.unknown.length} {t.rows}
-                            </span>
+                          <div className="ap-list">
+                            {result.clerks.map((clerk) => (
+                              <div
+                                className="ap-row"
+                                key={clerk.id ?? "unknown"}
+                              >
+                                <div className="ap-person">
+                                  <span className="avatar">
+                                    {clerk.id
+                                      ? clerk.ap
+                                          .split(/\s+/)
+                                          .map((word) => word[0])
+                                          .slice(0, 2)
+                                          .join("")
+                                      : "?"}
+                                  </span>
+                                  <span>
+                                    {clerk.id ? clerk.ap : t.unknownCount}
+                                  </span>
+                                </div>
+                                <div className="bar-track">
+                                  <div
+                                    className={`bar-fill ${clerk.id === null ? "unknown" : ""}`}
+                                    style={{ width: `${clerk.share * 100}%` }}
+                                  />
+                                </div>
+                                <span className="ap-number">
+                                  {formatted(clerk.invoiceCount)}
+                                </span>
+                                <span className="ap-percentage">
+                                  {(clerk.share * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="export-line">
+                            <span>{t.exportNote}</span>
                             <button
-                              className="small"
+                              className="text-button"
                               onClick={() =>
                                 download(
-                                  unknownRowsCsv(result, dataset!.headers),
-                                  "unknown_invoices.csv",
+                                  apCountsCsv(result),
+                                  "invoices_per_ap.csv",
                                 )
                               }
                             >
                               <ArrowDownToLine />
-                              {t.exportUnknown}
+                              {t.exportAp}
                             </button>
                           </div>
-                          <div className="table-wrap unknown-table">
+                        </>
+                      ) : null}
+                      {tab === "projects" ? (
+                        <>
+                          <div className="table-tools">
+                            <label className="search-box">
+                              <Search />
+                              <input
+                                value={search}
+                                onChange={(event) => {
+                                  setSearch(event.target.value);
+                                  setPage(0);
+                                }}
+                                placeholder={t.search}
+                                aria-label={t.search}
+                              />
+                            </label>
+                            <button
+                              className="small"
+                              onClick={() =>
+                                download(
+                                  projectCountsCsv(result),
+                                  "invoices_per_project.csv",
+                                )
+                              }
+                            >
+                              <ArrowDownToLine />
+                              {t.exportProject}
+                            </button>
+                          </div>
+                          <div className="table-wrap">
                             <table>
                               <thead>
                                 <tr>
-                                  <th scope="col">{t.sourceRow}</th>
-                                  <th scope="col">{t.project}</th>
-                                  <th scope="col">{t.reason}</th>
-                                  {dataset?.headers.map((header, i) => (
-                                    <th scope="col" key={i}>
-                                      {header}
-                                    </th>
-                                  ))}
+                                  <th scope="col">
+                                    <button
+                                      onClick={() => flipSort("projectNumber")}
+                                    >
+                                      {t.project}
+                                      <ArrowDownUp />
+                                    </button>
+                                  </th>
+                                  <th scope="col">{t.ap}</th>
+                                  <th scope="col" className="align-right">
+                                    <button
+                                      onClick={() => flipSort("invoiceCount")}
+                                    >
+                                      {t.invoices}
+                                      <ArrowDownUp />
+                                    </button>
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {result.unknown
+                                {filteredProjects
                                   .slice(
-                                    displayUnknownPage * PAGE_SIZE,
-                                    (displayUnknownPage + 1) * PAGE_SIZE,
+                                    displayPage * PAGE_SIZE,
+                                    (displayPage + 1) * PAGE_SIZE,
                                   )
                                   .map((row) => (
-                                    <tr key={row.sourceRow}>
-                                      <td>{row.sourceRow}</td>
-                                      <td>{row.projectNumber ?? "—"}</td>
-                                      <td>
-                                        {row.reason === "missing-project"
-                                          ? t.missingProject
-                                          : t.unassignedProject}
+                                    <tr key={row.projectNumber ?? "unknown"}>
+                                      <td>{rowName(row)}</td>
+                                      <td
+                                        className={
+                                          row.ap === "Unknown"
+                                            ? "unknown-cell"
+                                            : ""
+                                        }
+                                      >
+                                        {row.ap === "Unknown"
+                                          ? t.unknownCount
+                                          : row.ap}
                                       </td>
-                                      {dataset?.headers.map((_, i) => (
-                                        <td key={i} title={row.values[i] ?? ""}>
-                                          {row.values[i] || "—"}
-                                        </td>
-                                      ))}
+                                      <td className="align-right">
+                                        {formatted(row.invoiceCount)}
+                                      </td>
                                     </tr>
                                   ))}
+                                {filteredProjects.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={3}>{t.noMatches}</td>
+                                  </tr>
+                                ) : null}
                               </tbody>
                             </table>
                           </div>
                           <div className="pagination">
                             <span>
-                              {t.rowsShown} {displayUnknownPage * PAGE_SIZE + 1}
+                              {t.rowsShown}{" "}
+                              {filteredProjects.length
+                                ? displayPage * PAGE_SIZE + 1
+                                : 0}
                               –
                               {Math.min(
-                                (displayUnknownPage + 1) * PAGE_SIZE,
-                                result.unknown.length,
+                                (displayPage + 1) * PAGE_SIZE,
+                                filteredProjects.length,
                               )}{" "}
-                              / {result.unknown.length}
+                              / {formatted(filteredProjects.length)}
                             </span>
                             <div className="pagination-controls">
                               <button
-                                disabled={displayUnknownPage === 0}
-                                onClick={() =>
-                                  setUnknownPage(displayUnknownPage - 1)
-                                }
+                                disabled={displayPage === 0}
+                                onClick={() => setPage(displayPage - 1)}
                                 aria-label={t.previous}
                               >
                                 <ChevronLeft />
                               </button>
                               <span>
-                                {displayUnknownPage + 1} / {unknownMaxPage + 1}
+                                {displayPage + 1} / {maxPage + 1}
                               </span>
                               <button
-                                disabled={displayUnknownPage >= unknownMaxPage}
-                                onClick={() =>
-                                  setUnknownPage(displayUnknownPage + 1)
-                                }
+                                disabled={displayPage >= maxPage}
+                                onClick={() => setPage(displayPage + 1)}
                                 aria-label={t.next}
                               >
                                 <ChevronRight />
@@ -2234,77 +2195,182 @@ export default function App() {
                             </div>
                           </div>
                         </>
-                      ) : (
-                        <div className="unknown-ok">
-                          <CheckCircle2 />
-                          {t.allAssigned}
-                        </div>
-                      )
-                    ) : null}
+                      ) : null}
+                      {tab === "unknown" ? (
+                        result.unknown.length ? (
+                          <>
+                            <p className="section-note">{t.unknownNote}</p>
+                            <div className="table-tools">
+                              <span className="subtle-label">
+                                {result.unknown.length} {t.rows}
+                              </span>
+                              <button
+                                className="small"
+                                onClick={() =>
+                                  download(
+                                    unknownRowsCsv(result, dataset!.headers),
+                                    "unknown_invoices.csv",
+                                  )
+                                }
+                              >
+                                <ArrowDownToLine />
+                                {t.exportUnknown}
+                              </button>
+                            </div>
+                            <div className="table-wrap unknown-table">
+                              <table>
+                                <thead>
+                                  <tr>
+                                    <th scope="col">{t.sourceRow}</th>
+                                    <th scope="col">{t.project}</th>
+                                    <th scope="col">{t.reason}</th>
+                                    {dataset?.headers.map((header, i) => (
+                                      <th scope="col" key={i}>
+                                        {header}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {result.unknown
+                                    .slice(
+                                      displayUnknownPage * PAGE_SIZE,
+                                      (displayUnknownPage + 1) * PAGE_SIZE,
+                                    )
+                                    .map((row) => (
+                                      <tr key={row.sourceRow}>
+                                        <td>{row.sourceRow}</td>
+                                        <td>{row.projectNumber ?? "—"}</td>
+                                        <td>
+                                          {row.reason === "missing-project"
+                                            ? t.missingProject
+                                            : t.unassignedProject}
+                                        </td>
+                                        {dataset?.headers.map((_, i) => (
+                                          <td
+                                            key={i}
+                                            title={row.values[i] ?? ""}
+                                          >
+                                            {row.values[i] || "—"}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            <div className="pagination">
+                              <span>
+                                {t.rowsShown}{" "}
+                                {displayUnknownPage * PAGE_SIZE + 1}–
+                                {Math.min(
+                                  (displayUnknownPage + 1) * PAGE_SIZE,
+                                  result.unknown.length,
+                                )}{" "}
+                                / {result.unknown.length}
+                              </span>
+                              <div className="pagination-controls">
+                                <button
+                                  disabled={displayUnknownPage === 0}
+                                  onClick={() =>
+                                    setUnknownPage(displayUnknownPage - 1)
+                                  }
+                                  aria-label={t.previous}
+                                >
+                                  <ChevronLeft />
+                                </button>
+                                <span>
+                                  {displayUnknownPage + 1} /{" "}
+                                  {unknownMaxPage + 1}
+                                </span>
+                                <button
+                                  disabled={
+                                    displayUnknownPage >= unknownMaxPage
+                                  }
+                                  onClick={() =>
+                                    setUnknownPage(displayUnknownPage + 1)
+                                  }
+                                  aria-label={t.next}
+                                >
+                                  <ChevronRight />
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="unknown-ok">
+                            <CheckCircle2 />
+                            {t.allAssigned}
+                          </div>
+                        )
+                      ) : null}
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-icon">
+                      <BarChart3 />
+                    </div>
+                    <h3>
+                      {!shared
+                        ? loadingRules
+                          ? t.syncingRules
+                          : t.rulesLoadFailure
+                        : workbook
+                          ? t.companyNone
+                          : t.emptyTitle}
+                    </h3>
+                    <p>
+                      {!shared
+                        ? loadingRules
+                          ? t.syncingRules
+                          : t.rulesLoadFailure
+                        : workbook
+                          ? dataset
+                            ? t.columnNote
+                            : t.badHeader
+                          : t.emptyText}
+                    </p>
+                    <div className="empty-placeholder" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
                   </div>
-                </>
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-icon">
-                    <BarChart3 />
-                  </div>
-                  <h3>
-                    {!shared
-                      ? loadingRules
-                        ? t.syncingRules
-                        : t.rulesLoadFailure
-                      : workbook
-                        ? t.companyNone
-                        : t.emptyTitle}
-                  </h3>
-                  <p>
-                    {!shared
-                      ? loadingRules
-                        ? t.syncingRules
-                        : t.rulesLoadFailure
-                      : workbook
-                        ? dataset
-                          ? t.columnNote
-                          : t.badHeader
-                        : t.emptyText}
-                  </p>
-                  <div className="empty-placeholder" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
+                )}
+              </section>
+              {result && result.totalInvoices === 0 ? (
+                <div className="notice">
+                  <Info />
+                  <div>{t.noRows}</div>
+                </div>
+              ) : null}
+              {workbook?.warnings.length ? (
+                <div className="notice">
+                  <Info />
+                  <div>
+                    <strong>{t.warnings}</strong>
+                    {workbook.warnings.map((warning, i) => (
+                      <small key={i}>{warning}</small>
+                    ))}
                   </div>
                 </div>
-              )}
-            </section>
-            {result && result.totalInvoices === 0 ? (
-              <div className="notice">
-                <Info />
-                <div>{t.noRows}</div>
-              </div>
-            ) : null}
-            {workbook?.warnings.length ? (
-              <div className="notice">
+              ) : null}
+              <section className="panel method-card">
                 <Info />
                 <div>
-                  <strong>{t.warnings}</strong>
-                  {workbook.warnings.map((warning, i) => (
-                    <small key={i}>{warning}</small>
-                  ))}
+                  <h3>{t.countMethod}</h3>
+                  <p>{t.method}</p>
                 </div>
-              </div>
-            ) : null}
-            <section className="panel method-card">
-              <Info />
-              <div>
-                <h3>{t.countMethod}</h3>
-                <p>{t.method}</p>
-              </div>
-            </section>
+              </section>
+            </div>
           </div>
         </div>
-        <Manual language={language} onLanguageChange={setLanguage} />
+        <div className="page-view" hidden={activePage !== "manual"}>
+          <Manual language={language} onLanguageChange={setLanguage} />
+        </div>
       </main>
       <footer className="footer">
         <span>{t.footer}</span>

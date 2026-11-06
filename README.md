@@ -6,7 +6,7 @@ A workspace for counting invoices by **AP clerk** and **project**, using one sha
 
 **Website:** [AP Count](https://ap-count.vercel.app/) · [Bilingual manual](https://ap-count.vercel.app/#manual)
 
-The on-page **Manual / 使用手册** includes a quick start and expandable guides for uploads, counting rules, shared portfolios, ownership conflicts, downloads, troubleshooting, and privacy. Its EN/中文 controls use the same language setting as the rest of the page.
+Use the top **AP Count / Manual** navigation to switch between the counting workspace and a dedicated documentation view. Direct links are `#count` and `#manual`; browser Back/Forward also switches views. Switching preserves the loaded file, analysis, filters, and manual expansion state. The **Manual / 使用手册** includes a quick start and expandable guides for uploads, counting rules, shared portfolios, ownership conflicts, downloads, troubleshooting, and privacy. Its EN/中文 controls use the same language setting as the rest of the app.
 
 This deployment is a **personal, non-commercial demonstration**. Vercel's free [Hobby plan](https://vercel.com/docs/plans/hobby) is restricted to personal, non-commercial use. Company production use needs hosting with suitable terms. Authentication uses [Clerk Hobby](https://clerk.com/pricing), and the small shared configuration uses a private [Vercel Blob store](https://vercel.com/docs/vercel-blob/usage-and-pricing). These services have free allowances and usage limits; no paid upgrade is required for this demonstration. Provider terms, free allowances, and future availability can change.
 
@@ -125,6 +125,8 @@ GitHub Actions runs the tests and production build on pushes to `main` and pull 
 AP Count 用于按 **AP clerk** 与 **project** 统计 invoice 数量。支持上传 `.xls`、`.xlsx` 和 UTF-8 `.csv`，页面默认英文，可切换中文。Invoice 解析与统计在浏览器中完成；AP 项目分配保存在一份所有访客共用的云端配置中，只有授权管理员可以修改。
 
 ### 使用步骤
+
+顶部 **AP Count／使用手册** 导航将统计工作区和手册分开显示，可来回切换，也支持浏览器前进／后退。切换时保留已上传文件、统计结果、筛选条件及手册展开状态。
 
 1. 上传或拖入一个文件。演示数据均为合成记录，不包含真实附件。
 2. 核对工作表、表头行以及 Company 列。系统会自动识别 Company 表头；文件有标题行或列名不同时，可以手动调整。

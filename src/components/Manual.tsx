@@ -198,7 +198,9 @@ export default function Manual({
         </span>
         <div className="manual-heading-copy">
           <p className="manual-kicker">{t.kicker}</p>
-          <h2 id="manual-title">{t.title}</h2>
+          <h1 id="manual-title" tabIndex={-1}>
+            {t.title}
+          </h1>
           <p className="manual-intro">{t.intro}</p>
         </div>
         {onLanguageChange ? (
