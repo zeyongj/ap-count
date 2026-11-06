@@ -4,6 +4,10 @@ A workspace for counting invoices by **AP clerk** and **project**, using one sha
 
 **Source:** [github.com/zeyongj/ap-count](https://github.com/zeyongj/ap-count)
 
+**Website:** [AP Count](https://ap-count.vercel.app/) · [Bilingual manual](https://ap-count.vercel.app/#manual)
+
+The on-page **Manual / 使用手册** includes a quick start and expandable guides for uploads, counting rules, shared portfolios, ownership conflicts, downloads, troubleshooting, and privacy. Its EN/中文 controls use the same language setting as the rest of the page.
+
 This deployment is a **personal, non-commercial demonstration**. Vercel's free [Hobby plan](https://vercel.com/docs/plans/hobby) is restricted to personal, non-commercial use. Company production use needs hosting with suitable terms. Authentication uses [Clerk Hobby](https://clerk.com/pricing), and the small shared configuration uses a private [Vercel Blob store](https://vercel.com/docs/vercel-blob/usage-and-pricing). These services have free allowances and usage limits; no paid upgrade is required for this demonstration. Provider terms, free allowances, and future availability can change.
 
 ## Use the workspace

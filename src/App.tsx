@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
+  BookOpen,
   FileSpreadsheet,
   FolderKanban,
   Info,
@@ -52,6 +52,7 @@ import type {
   RuleIssue,
 } from "./lib/types";
 import "./styles.css";
+import Manual from "./components/Manual";
 
 type Language = "en" | "zh";
 type Tab = "clerks" | "projects" | "unknown";
@@ -96,7 +97,7 @@ const copy = {
       "Your administrator session expired. Sign in again before saving.",
     saveInvalid:
       "The server found an invalid or conflicting assignment. Review the draft before saving.",
-    guide: "How it works",
+    guide: "Manual",
     importTitle: "Invoice file",
     drop: "Drop your invoice file here",
     dropSub: "or choose a file from your computer",
@@ -286,7 +287,7 @@ const copy = {
     saveForbidden: "当前账户没有修改共享分配的权限。",
     sessionExpired: "管理员登录已过期，请重新登录后保存。",
     saveInvalid: "服务器检测到无效或冲突的分配，请检查草稿后再保存。",
-    guide: "使用说明",
+    guide: "使用手册",
     importTitle: "发票文件",
     drop: "将发票文件拖放到这里",
     dropSub: "或从电脑中选择一个文件",
@@ -1210,7 +1211,6 @@ export default function App() {
   }>({ field: "projectNumber", direction: 1 });
   const fileInput = useRef<HTMLInputElement>(null);
   const loadId = useRef(0);
-  const guideRef = useRef<HTMLDivElement>(null);
   const sheet = workbook?.sheets[sheetIndex];
   const dataset = useMemo(
     () =>
@@ -1588,15 +1588,10 @@ export default function App() {
             <p>{t.subtitle}</p>
           </div>
           <div className="intro-actions">
-            <button
-              className="ghost"
-              onClick={() =>
-                guideRef.current?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              <CircleHelp />
+            <a className="manual-link" href="#manual">
+              <BookOpen />
               {t.guide}
-            </button>
+            </a>
             <button disabled={!shared} onClick={openPortfolioEditor}>
               <Settings2 />
               {canEdit && !sharedError ? t.portfolios : t.viewPortfolios}
@@ -2309,17 +2304,7 @@ export default function App() {
             </section>
           </div>
         </div>
-        <div className="bottom-guide" ref={guideRef}>
-          {[1, 2, 3].map((number, i) => (
-            <div className="guide-item" key={number}>
-              <span className="guide-number">0{number}</span>
-              <div>
-                <h3>{[t.step1, t.step2, t.step3][i]}</h3>
-                <p>{[t.step1Text, t.step2Text, t.step3Text][i]}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <Manual language={language} onLanguageChange={setLanguage} />
       </main>
       <footer className="footer">
         <span>{t.footer}</span>
