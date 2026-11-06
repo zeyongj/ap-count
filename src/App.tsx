@@ -2377,7 +2377,6 @@ export default function App() {
       <footer className="footer">
         <span>{t.footer}</span>
         <span>
-          {language === "en" ? "Personal demo · " : "个人演示 · "}
           <ShieldCheck />
           {t.localOnly}
         </span>
