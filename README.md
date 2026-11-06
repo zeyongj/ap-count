@@ -51,7 +51,7 @@ No real invoice data is included in this public repository. Spreadsheet/CSV atta
 
 ## Development
 
-Requires Node.js **22.12 or newer**.
+Requires Node.js **22.12+ or 24 LTS** (below 25). Production uses Node 24; CI also verifies Node 22 compatibility.
 
 ```sh
 npm ci
