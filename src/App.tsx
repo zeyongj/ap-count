@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SignInButton, UserButton, useAuth } from "@clerk/react";
 import {
   ArrowDownToLine,
   ArrowDownUp,
@@ -35,6 +36,10 @@ import {
 } from "./lib/analysis";
 import { freshDefaultRules } from "./lib/default-rules";
 import {
+  findAssignmentConflicts,
+  resolveAssignmentConflict,
+} from "./lib/conflicts";
+import {
   inferHeaderRow,
   MAX_FILE_BYTES,
   parseWorkbook,
@@ -50,7 +55,6 @@ import "./styles.css";
 
 type Language = "en" | "zh";
 type Tab = "clerks" | "projects" | "unknown";
-const STORAGE_KEY = "ap-count-portfolios-v1";
 const PAGE_SIZE = 10;
 const copy = {
   en: {
@@ -60,6 +64,38 @@ const copy = {
     title: "Every invoice, accounted for.",
     subtitle: "Turn your invoice file into a clear view of AP workloads.",
     portfolios: "Manage portfolios",
+    viewPortfolios: "View portfolios",
+    adminSignIn: "Admin sign in",
+    admin: "Administrator",
+    readOnlyAccess: "Read-only access",
+    checkingPermissions: "Checking permissions…",
+    permissionUnavailable:
+      "Administrator access could not be verified. Please retry or sign in again.",
+    sharedRules: "Shared distribution",
+    syncingRules: "Loading shared rules…",
+    lastSaved: "Last saved",
+    notYetUpdated: "Original rules · no changes published yet",
+    rulesLoadFailure:
+      "Shared AP rules could not be loaded. Retry to continue the analysis.",
+    rulesStale:
+      "Shared AP rules could not be refreshed. The last loaded version is shown; editing is paused until reconnecting.",
+    retry: "Retry",
+    refreshRules: "Refresh shared rules",
+    reloadLatest: "Load latest shared rules",
+    reloadConfirm:
+      "Replace this unsaved draft with the latest shared distribution? Export your draft first if you want to keep a copy.",
+    replaceDraft: "Replace draft",
+    keepDraft: "Keep draft",
+    saveConflict:
+      "Another administrator saved a newer distribution. Your draft is preserved. Load the latest rules and review your changes before saving again.",
+    saveUnavailable:
+      "The shared rules service is unavailable. Your draft is preserved; please retry later.",
+    saveForbidden:
+      "This account does not have permission to change the shared distribution.",
+    sessionExpired:
+      "Your administrator session expired. Sign in again before saving.",
+    saveInvalid:
+      "The server found an invalid or conflicting assignment. Review the draft before saving.",
     guide: "How it works",
     importTitle: "Invoice file",
     drop: "Drop your invoice file here",
@@ -149,7 +185,18 @@ const copy = {
     portfolioSubtitle:
       "Edit names, project ranges and exceptions. Saving recalculates your current invoice file.",
     rulesBehavior:
-      "Explicit project assignments take priority over ranges. Exclusions remove a project from a range. Conflicting assignments must be resolved before saving.",
+      "Every project must have one AP owner. If assignments overlap, choose the responsible AP below before saving. Exclusions remove projects from ranges.",
+    viewPortfolioTitle: "View AP portfolios",
+    readOnlyRules:
+      "Shared distribution · Read only. Sign in as an administrator to make changes.",
+    conflictsTitle: "Confirm project ownership",
+    conflictsIntro:
+      "These projects are assigned to more than one AP. Choose one responsible AP for each project or range; no owner is selected automatically.",
+    assignTo: "Assign to",
+    resolvedConflict:
+      "Ownership updated in this draft. Save to publish the change.",
+    saving: "Saving…",
+    saveError: "The distribution could not be saved. Your draft is still open.",
     exportRules: "Export rules",
     importRules: "Import rules",
     restore: "Restore defaults",
@@ -169,12 +216,12 @@ const copy = {
     save: "Save & recalculate",
     cancel: "Cancel",
     localRules:
-      "Rules are saved in this browser. Export them to share or back them up.",
+      "Saving publishes this distribution to everyone. Invoice data stays in your browser.",
     newClerk: "New AP clerk",
     defaultConfirm:
       "Replace your draft with the original seven-clerk distribution?",
     defaultConfirmButton: "Use original rules",
-    saved: "Portfolio rules saved. Counts have been updated.",
+    saved: "Shared distribution saved for everyone. Counts have been updated.",
     sessionSaved:
       "Rules are active for this session. Browser storage is unavailable; export a backup.",
     invalidSaved:
@@ -213,6 +260,32 @@ const copy = {
     title: "每一张发票，都清晰有数。",
     subtitle: "导入发票文件，即可查看各 AP 的工作量。",
     portfolios: "管理 AP 分配",
+    viewPortfolios: "查看 AP 分配",
+    adminSignIn: "管理员登录",
+    admin: "管理员",
+    readOnlyAccess: "只读权限",
+    checkingPermissions: "正在核对权限…",
+    permissionUnavailable: "无法验证管理员权限，请重试或重新登录。",
+    sharedRules: "共享分配",
+    syncingRules: "正在载入共享规则…",
+    lastSaved: "上次保存",
+    notYetUpdated: "原始规则 · 尚未发布修改",
+    rulesLoadFailure: "无法载入共享 AP 分配，请重试后再进行统计。",
+    rulesStale:
+      "无法刷新共享 AP 分配。现显示上次载入的版本，重新连接前暂不可修改。",
+    retry: "重试",
+    refreshRules: "刷新共享规则",
+    reloadLatest: "载入最新共享规则",
+    reloadConfirm:
+      "是否将未保存的草稿替换为最新共享分配？如需保留草稿，请先导出备份。",
+    replaceDraft: "替换草稿",
+    keepDraft: "保留草稿",
+    saveConflict:
+      "其他管理员已保存了更新的分配。你的草稿仍保留在这里，请载入最新规则，核对后再保存。",
+    saveUnavailable: "共享规则服务暂不可用。你的草稿已保留，请稍后重试。",
+    saveForbidden: "当前账户没有修改共享分配的权限。",
+    sessionExpired: "管理员登录已过期，请重新登录后保存。",
+    saveInvalid: "服务器检测到无效或冲突的分配，请检查草稿后再保存。",
     guide: "使用说明",
     importTitle: "发票文件",
     drop: "将发票文件拖放到这里",
@@ -300,7 +373,16 @@ const copy = {
     portfolioSubtitle:
       "修改人员姓名、项目编号范围及例外项目。保存后会重新统计当前文件。",
     rulesBehavior:
-      "明确指定的项目优先于编号范围。排除项目不参与范围分配。保存前必须解决分配冲突。",
+      "每个项目只能有一位 AP 负责人。若分配重叠，请在下方明确选择负责人后再保存。排除项目不参与范围分配。",
+    viewPortfolioTitle: "查看 AP 项目分配",
+    readOnlyRules: "共享分配 · 只读。请使用管理员账户登录后修改。",
+    conflictsTitle: "请确认项目负责人",
+    conflictsIntro:
+      "以下项目被分配给了多位 AP。请为每个项目或范围选择一位负责人，系统不会自动代选。",
+    assignTo: "分配给",
+    resolvedConflict: "草稿中的负责人已更新。保存后会发布这项修改。",
+    saving: "正在保存…",
+    saveError: "未能保存分配规则，修改草稿仍保留在此窗口。",
     exportRules: "导出规则",
     importRules: "导入规则",
     restore: "恢复原始分配",
@@ -319,11 +401,12 @@ const copy = {
     removeRange: "删除范围",
     save: "保存并重新统计",
     cancel: "取消",
-    localRules: "规则保存在当前浏览器。可导出规则用于分享或备份。",
+    localRules:
+      "保存后，所有使用者都会使用这份共享分配。发票数据仍仅在本地浏览器处理。",
     newClerk: "新 AP 人员",
     defaultConfirm: "是否将草稿替换为原始的七位 AP 人员分配规则？",
     defaultConfirmButton: "使用原始规则",
-    saved: "分配规则已保存，统计已更新。",
+    saved: "共享分配已保存，所有使用者均会使用新规则，当前统计已更新。",
     sessionSaved:
       "规则在本次使用中已生效。浏览器无法保存设置，请导出规则备份。",
     invalidSaved: "无法载入已保存的规则，现使用原始分配。",
@@ -355,18 +438,61 @@ type Copy = typeof copy.en;
 const uid = () =>
   globalThis.crypto?.randomUUID?.() ??
   `ap-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-function readRules(): { rules: APPortfolio[]; invalid: boolean } {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { rules: freshDefaultRules(), invalid: false };
-    const saved = JSON.parse(raw);
-    if (saved.version !== 1 || validateRules(saved.portfolios).length)
-      return { rules: freshDefaultRules(), invalid: true };
-    return { rules: saved.portfolios, invalid: false };
-  } catch {
-    return { rules: freshDefaultRules(), invalid: true };
+interface SharedPortfolio {
+  version: 1;
+  revision: string;
+  updatedAt: string | null;
+  portfolios: APPortfolio[];
+}
+class SharedApiError extends Error {
+  constructor(
+    public readonly code: string,
+    message = code,
+  ) {
+    super(message);
   }
 }
+async function sharedRequest<T>(
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(path, {
+      ...options,
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const value: unknown = await response.json();
+    if (!response.ok) {
+      const failure = value as { code?: string; message?: string };
+      throw new SharedApiError(
+        failure?.code ?? "service_unavailable",
+        failure?.message,
+      );
+    }
+    return value as T;
+  } catch (error) {
+    if (error instanceof SharedApiError) throw error;
+    throw new SharedApiError("service_unavailable");
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+function checkedSnapshot(value: SharedPortfolio): SharedPortfolio {
+  if (
+    value?.version !== 1 ||
+    typeof value.revision !== "string" ||
+    (value.updatedAt !== null &&
+      (typeof value.updatedAt !== "string" ||
+        !Number.isFinite(Date.parse(value.updatedAt)))) ||
+    validateRules(value.portfolios).length
+  )
+    throw new SharedApiError("service_unavailable");
+  return value;
+}
+const EMPTY_RULES: APPortfolio[] = [];
 function download(
   text: string,
   filename: string,
@@ -383,24 +509,6 @@ function download(
 }
 function serializeRules(rules: APPortfolio[]) {
   return JSON.stringify({ version: 1, portfolios: rules }, null, 2) + "\n";
-}
-function rulesSignature(rules: APPortfolio[]): string {
-  return JSON.stringify(
-    rules
-      .map((rule) => ({
-        id: rule.id,
-        name: rule.name.trim(),
-        ranges: rule.ranges
-          .map((range) => ({ start: range.start, end: range.end }))
-          .sort(
-            (a, b) =>
-              a.start - b.start || (a.end ?? Infinity) - (b.end ?? Infinity),
-          ),
-        include: [...new Set(rule.include)].sort((a, b) => a - b),
-        exclude: [...new Set(rule.exclude)].sort((a, b) => a - b),
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-  );
 }
 function localIssue(
   issue: RuleIssue,
@@ -508,16 +616,23 @@ function PortfolioEditor({
   language,
   onClose,
   onSave,
+  readOnly = true,
+  onReload,
 }: {
   rules: APPortfolio[];
   language: Language;
   onClose: () => void;
-  onSave: (rules: APPortfolio[]) => void;
+  onSave: (rules: APPortfolio[]) => Promise<void> | void;
+  readOnly?: boolean;
+  onReload?: () => Promise<APPortfolio[]>;
 }) {
   const t = copy[language];
   const [draft, setDraft] = useState(() => toDraft(rules));
   const [restore, setRestore] = useState(false);
   const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [reloadConfirm, setReloadConfirm] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const compiled = useMemo(() => {
@@ -532,16 +647,53 @@ function PortfolioEditor({
       };
     }
   }, [draft]);
+  const ownershipCodes = new Set(["overlap", "duplicate-include"]);
+  const schemaIssues = compiled.issues.filter(
+    (issue) => !ownershipCodes.has(issue.code),
+  );
+  const conflicts = useMemo(() => {
+    if (compiled.parseError || schemaIssues.length) return [];
+    return findAssignmentConflicts(compiled.value);
+  }, [compiled]);
+  const hasErrors = Boolean(
+    compiled.parseError || compiled.issues.length || conflicts.length,
+  );
+  async function submitRules() {
+    if (readOnly || saving || hasErrors) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onSave(compiled.value);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : t.saveError);
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function reloadDraft() {
+    if (!onReload || saving) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      setDraft(toDraft(await onReload()));
+      setReloadConfirm(false);
+      setNotice(t.importDraft);
+    } catch {
+      setSaveError(t.saveUnavailable);
+    } finally {
+      setSaving(false);
+    }
+  }
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     modalRef.current?.querySelector<HTMLElement>("button")?.focus();
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !saving) onClose();
       if (event.key !== "Tab") return;
       const focusables = modalRef.current?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled),input,textarea,select,[tabindex="0"]',
+        'button:not(:disabled),input:not(:disabled):not([type="file"]),textarea:not(:disabled),select:not(:disabled),[tabindex="0"]',
       );
       if (!focusables?.length) return;
       const first = focusables[0],
@@ -560,14 +712,16 @@ function PortfolioEditor({
       document.body.style.overflow = previousOverflow;
       previous?.focus();
     };
-  }, [onClose]);
+  }, [onClose, saving]);
   function update(id: string, patch: Partial<DraftRule>) {
+    if (readOnly || saving) return;
+    setSaveError("");
     setDraft((current) =>
       current.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)),
     );
   }
   async function importRules(file?: File) {
-    if (!file) return;
+    if (!file || readOnly || saving) return;
     try {
       if (file.size > 1024 * 1024) throw new Error(t.importTooLarge);
       const parsed = JSON.parse(await file.text());
@@ -576,7 +730,9 @@ function PortfolioEditor({
         : parsed.version === 1
           ? parsed.portfolios
           : null;
-      const issues = validateRules(imported);
+      const issues = validateRules(imported).filter(
+        (issue) => !ownershipCodes.has(issue.code),
+      );
       if (issues.length)
         throw new Error(
           issues
@@ -603,12 +759,11 @@ function PortfolioEditor({
       );
     }
   }
-  const hasErrors = Boolean(compiled.parseError || compiled.issues.length);
   return (
     <div
       className="modal-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !saving) onClose();
       }}
     >
       <div
@@ -621,12 +776,17 @@ function PortfolioEditor({
       >
         <div className="modal-header">
           <div>
-            <h2 id="portfolio-title">{t.portfolioTitle}</h2>
-            <p id="portfolio-description">{t.portfolioSubtitle}</p>
+            <h2 id="portfolio-title">
+              {readOnly ? t.viewPortfolioTitle : t.portfolioTitle}
+            </h2>
+            <p id="portfolio-description">
+              {readOnly ? t.readOnlyRules : t.portfolioSubtitle}
+            </p>
           </div>
           <button
             className="icon-button ghost"
             onClick={onClose}
+            disabled={saving}
             aria-label={t.close}
           >
             <X />
@@ -640,7 +800,7 @@ function PortfolioEditor({
           <div className="rules-toolbar">
             <div>
               <button
-                disabled={hasErrors}
+                disabled={hasErrors || saving}
                 onClick={() =>
                   download(
                     serializeRules(compiled.value),
@@ -652,45 +812,55 @@ function PortfolioEditor({
                 <ArrowDownToLine />
                 {t.exportRules}
               </button>
-              <button onClick={() => importRef.current?.click()}>
-                <Upload />
-                {t.importRules}
-              </button>
+              {!readOnly ? (
+                <button
+                  disabled={saving}
+                  onClick={() => importRef.current?.click()}
+                >
+                  <Upload />
+                  {t.importRules}
+                </button>
+              ) : null}
               <input
                 ref={importRef}
                 className="hidden-input"
                 type="file"
                 accept=".json,application/json"
                 aria-label={t.importRules}
+                disabled={readOnly || saving}
                 onChange={(event) => {
                   void importRules(event.target.files?.[0]);
                   event.target.value = "";
                 }}
               />
-              <button onClick={() => setRestore(true)}>
-                <RotateCcw />
-                {t.restore}
-              </button>
+              {!readOnly ? (
+                <button disabled={saving} onClick={() => setRestore(true)}>
+                  <RotateCcw />
+                  {t.restore}
+                </button>
+              ) : null}
             </div>
-            <button
-              className="primary"
-              onClick={() =>
-                setDraft((current) => [
-                  ...current,
-                  {
-                    id: uid(),
-                    name: `${t.newClerk} ${current.length + 1}`,
-                    ranges: [],
-                    include: "",
-                    exclude: "",
-                  },
-                ])
-              }
-              disabled={draft.length >= 100}
-            >
-              <Plus />
-              {t.addClerk}
-            </button>
+            {!readOnly ? (
+              <button
+                className="primary"
+                onClick={() =>
+                  setDraft((current) => [
+                    ...current,
+                    {
+                      id: uid(),
+                      name: `${t.newClerk} ${current.length + 1}`,
+                      ranges: [],
+                      include: "",
+                      exclude: "",
+                    },
+                  ])
+                }
+                disabled={saving || draft.length >= 100}
+              >
+                <Plus />
+                {t.addClerk}
+              </button>
+            ) : null}
           </div>
           {restore ? (
             <div className="confirm-defaults">
@@ -725,7 +895,7 @@ function PortfolioEditor({
               </button>
             </div>
           ) : null}
-          {hasErrors ? (
+          {compiled.parseError || schemaIssues.length ? (
             <div className="notice error" role="alert">
               <TriangleAlert />
               <div>
@@ -738,7 +908,7 @@ function PortfolioEditor({
                         : t.invalidRange}
                     </li>
                   ) : (
-                    compiled.issues
+                    schemaIssues
                       .slice(0, 8)
                       .map((issue, i) => (
                         <li key={`${issue.code}-${i}`}>
@@ -750,143 +920,249 @@ function PortfolioEditor({
               </div>
             </div>
           ) : null}
-          {draft.length === 0 ? (
-            <p className="empty-rules">{t.emptyRules}</p>
-          ) : (
-            draft.map((rule, index) => (
-              <section
-                className="rule-card"
-                key={rule.id}
-                aria-label={`${t.ap} ${index + 1}`}
-              >
-                <div className="rule-card-heading">
-                  <span className="avatar">{index + 1}</span>
-                  <label className="field">
-                    <span>{t.name}</span>
-                    <input
-                      aria-label={`${t.name} ${index + 1}`}
-                      value={rule.name}
-                      onChange={(event) =>
-                        update(rule.id, { name: event.target.value })
-                      }
-                      maxLength={100}
-                    />
-                  </label>
-                  <button
-                    className="icon-button ghost danger"
-                    onClick={() =>
-                      setDraft((current) =>
-                        current.filter((item) => item.id !== rule.id),
-                      )
-                    }
-                    aria-label={`${t.removeClerk}: ${rule.name}`}
-                    title={t.removeClerk}
-                  >
-                    <Trash2 />
-                  </button>
+          {conflicts.length ? (
+            <section
+              className="ownership-conflicts"
+              aria-labelledby="ownership-conflicts-title"
+            >
+              <div className="conflicts-heading">
+                <TriangleAlert aria-hidden="true" />
+                <div>
+                  <h3 id="ownership-conflicts-title">
+                    {t.conflictsTitle}{" "}
+                    <span className="badge">{conflicts.length}</span>
+                  </h3>
+                  <p>{t.conflictsIntro}</p>
                 </div>
-                <p className="range-label">{t.ranges}</p>
-                {rule.ranges.map((range, r) => (
-                  <div className="range-row" key={r}>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      aria-label={`${rule.name} ${t.start} ${r + 1}`}
-                      placeholder={t.start}
-                      value={range.start}
-                      onChange={(event) =>
-                        update(rule.id, {
-                          ranges: rule.ranges.map((item, i) =>
-                            i === r
-                              ? { ...item, start: event.target.value }
-                              : item,
-                          ),
-                        })
-                      }
-                    />
-                    <span>–</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      aria-label={`${rule.name} ${t.end} ${r + 1}`}
-                      placeholder={t.noLimit}
-                      value={range.end}
-                      onChange={(event) =>
-                        update(rule.id, {
-                          ranges: rule.ranges.map((item, i) =>
-                            i === r
-                              ? { ...item, end: event.target.value }
-                              : item,
-                          ),
-                        })
-                      }
-                    />
+              </div>
+              <div className="conflict-list">
+                {conflicts.map((conflict) => (
+                  <article className="conflict-card" key={conflict.key}>
+                    <strong>
+                      {t.project}{" "}
+                      {conflict.end === null
+                        ? `${conflict.start}+`
+                        : conflict.start === conflict.end
+                          ? conflict.start
+                          : `${conflict.start}–${conflict.end}`}
+                    </strong>
+                    <p>
+                      {conflict.owners.map((owner) => owner.name).join(" / ")}
+                    </p>
+                    {!readOnly ? (
+                      <div className="conflict-choices">
+                        {conflict.owners.map((owner) => (
+                          <button
+                            key={owner.id}
+                            disabled={saving}
+                            onClick={() => {
+                              const resolved = resolveAssignmentConflict(
+                                compiled.value,
+                                conflict,
+                                owner.id,
+                              );
+                              setDraft(toDraft(resolved));
+                              setSaveError("");
+                              setNotice(t.resolvedConflict);
+                            }}
+                          >
+                            <Check aria-hidden="true" />
+                            {t.assignTo} {owner.name}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {saveError ? (
+            <div className="notice error" role="alert">
+              <TriangleAlert />
+              <div>
+                <strong>{t.saveError}</strong>
+                <small>{saveError}</small>
+                {onReload ? (
+                  <button
+                    className="small"
+                    disabled={saving}
+                    onClick={() => setReloadConfirm(true)}
+                  >
+                    <RotateCcw />
+                    {t.reloadLatest}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {reloadConfirm ? (
+            <div className="confirm-defaults">
+              {t.reloadConfirm}
+              <div>
+                <button
+                  className="small"
+                  disabled={saving}
+                  onClick={() => setReloadConfirm(false)}
+                >
+                  {t.keepDraft}
+                </button>
+                <button
+                  className="small primary"
+                  disabled={saving}
+                  onClick={() => void reloadDraft()}
+                >
+                  {t.replaceDraft}
+                </button>
+              </div>
+            </div>
+          ) : null}
+          <fieldset
+            className={`portfolio-rule-fields ${readOnly ? "read-only" : ""}`}
+            disabled={readOnly || saving}
+          >
+            {draft.length === 0 ? (
+              <p className="empty-rules">{t.emptyRules}</p>
+            ) : (
+              draft.map((rule, index) => (
+                <section
+                  className="rule-card"
+                  key={rule.id}
+                  aria-label={`${t.ap} ${index + 1}`}
+                >
+                  <div className="rule-card-heading">
+                    <span className="avatar">{index + 1}</span>
+                    <label className="field">
+                      <span>{t.name}</span>
+                      <input
+                        aria-label={`${t.name} ${index + 1}`}
+                        value={rule.name}
+                        onChange={(event) =>
+                          update(rule.id, { name: event.target.value })
+                        }
+                        maxLength={100}
+                      />
+                    </label>
                     <button
-                      className="icon-button ghost"
+                      className="icon-button ghost danger"
                       onClick={() =>
-                        update(rule.id, {
-                          ranges: rule.ranges.filter((_, i) => i !== r),
-                        })
+                        setDraft((current) =>
+                          current.filter((item) => item.id !== rule.id),
+                        )
                       }
-                      aria-label={`${rule.name} ${t.removeRange} ${r + 1}`}
+                      aria-label={`${t.removeClerk}: ${rule.name}`}
+                      title={t.removeClerk}
                     >
-                      <X />
+                      <Trash2 />
                     </button>
                   </div>
-                ))}
-                <button
-                  className="rule-add-range"
-                  onClick={() =>
-                    update(rule.id, {
-                      ranges: [...rule.ranges, { start: "", end: "" }],
-                    })
-                  }
-                  disabled={rule.ranges.length >= 100}
-                >
-                  <Plus />
-                  {t.addRange}
-                </button>
-                <p className="field-help">{t.rangeHelp}</p>
-                <div className="rule-fields">
-                  <label className="field">
-                    {t.includes}
-                    <textarea
-                      value={rule.include}
-                      placeholder="5260, 5261"
-                      onChange={(event) =>
-                        update(rule.id, { include: event.target.value })
-                      }
-                    />
-                    <span className="field-help">{t.listHelp}</span>
-                  </label>
-                  <label className="field">
-                    {t.excludes}
-                    <textarea
-                      value={rule.exclude}
-                      placeholder="5061, 5200"
-                      onChange={(event) =>
-                        update(rule.id, { exclude: event.target.value })
-                      }
-                    />
-                    <span className="field-help">{t.listHelp}</span>
-                  </label>
-                </div>
-              </section>
-            ))
-          )}
+                  <p className="range-label">{t.ranges}</p>
+                  {rule.ranges.map((range, r) => (
+                    <div className="range-row" key={r}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label={`${rule.name} ${t.start} ${r + 1}`}
+                        placeholder={t.start}
+                        value={range.start}
+                        onChange={(event) =>
+                          update(rule.id, {
+                            ranges: rule.ranges.map((item, i) =>
+                              i === r
+                                ? { ...item, start: event.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                      <span>–</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label={`${rule.name} ${t.end} ${r + 1}`}
+                        placeholder={t.noLimit}
+                        value={range.end}
+                        onChange={(event) =>
+                          update(rule.id, {
+                            ranges: rule.ranges.map((item, i) =>
+                              i === r
+                                ? { ...item, end: event.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                      <button
+                        className="icon-button ghost"
+                        onClick={() =>
+                          update(rule.id, {
+                            ranges: rule.ranges.filter((_, i) => i !== r),
+                          })
+                        }
+                        aria-label={`${rule.name} ${t.removeRange} ${r + 1}`}
+                      >
+                        <X />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    className="rule-add-range"
+                    onClick={() =>
+                      update(rule.id, {
+                        ranges: [...rule.ranges, { start: "", end: "" }],
+                      })
+                    }
+                    disabled={rule.ranges.length >= 100}
+                  >
+                    <Plus />
+                    {t.addRange}
+                  </button>
+                  <p className="field-help">{t.rangeHelp}</p>
+                  <div className="rule-fields">
+                    <label className="field">
+                      {t.includes}
+                      <textarea
+                        value={rule.include}
+                        placeholder="5260, 5261"
+                        onChange={(event) =>
+                          update(rule.id, { include: event.target.value })
+                        }
+                      />
+                      <span className="field-help">{t.listHelp}</span>
+                    </label>
+                    <label className="field">
+                      {t.excludes}
+                      <textarea
+                        value={rule.exclude}
+                        placeholder="5061, 5200"
+                        onChange={(event) =>
+                          update(rule.id, { exclude: event.target.value })
+                        }
+                      />
+                      <span className="field-help">{t.listHelp}</span>
+                    </label>
+                  </div>
+                </section>
+              ))
+            )}
+          </fieldset>
         </div>
         <div className="modal-footer">
-          <p>{t.localRules}</p>
+          <p>{readOnly ? t.readOnlyRules : t.localRules}</p>
           <div>
-            <button onClick={onClose}>{t.cancel}</button>
-            <button
-              className="primary"
-              disabled={hasErrors}
-              onClick={() => onSave(compiled.value)}
-            >
-              <Check />
-              {t.save}
+            <button disabled={saving} onClick={onClose}>
+              {readOnly ? t.close : t.cancel}
             </button>
+            {!readOnly ? (
+              <button
+                className="primary"
+                disabled={hasErrors || saving}
+                onClick={() => void submitRules()}
+              >
+                {saving ? <LoaderCircle className="spinner" /> : <Check />}
+                {saving ? t.saving : t.save}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -897,8 +1173,18 @@ function PortfolioEditor({
 export default function App() {
   const [language, setLanguage] = useState<Language>("en");
   const t: Copy = copy[language];
-  const [initial] = useState(readRules);
-  const [rules, setRules] = useState(initial.rules);
+  const { isLoaded: authLoaded, isSignedIn, getToken, userId } = useAuth();
+  const [shared, setShared] = useState<SharedPortfolio | null>(null);
+  const rules = shared?.portfolios ?? EMPTY_RULES;
+  const [loadingRules, setLoadingRules] = useState(true);
+  const [sharedError, setSharedError] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const [checkingPermission, setCheckingPermission] = useState(false);
+  const [permissionError, setPermissionError] = useState(false);
+  const [permissionRequest, setPermissionRequest] = useState(0);
+  const [editorRevision, setEditorRevision] = useState<string | null>(null);
+  const sharedRequestId = useRef(0);
+  const sharedLoadedAt = useRef(0);
   const [workbook, setWorkbook] = useState<ParsedWorkbook | null>(null);
   const [filename, setFilename] = useState("");
   const [fileSize, setFileSize] = useState(0);
@@ -912,9 +1198,7 @@ export default function App() {
     key: keyof Copy;
     detail?: string;
   } | null>(null);
-  const [notice, setNotice] = useState<keyof Copy | null>(
-    initial.invalid ? "invalidSaved" : null,
-  );
+  const [notice, setNotice] = useState<keyof Copy | null>(null);
   const [editor, setEditor] = useState(false);
   const [tab, setTab] = useState<Tab>("clerks");
   const [search, setSearch] = useState("");
@@ -940,10 +1224,13 @@ export default function App() {
   );
   const result = useMemo(
     () =>
-      dataset && companyColumn >= 0 && companyColumn < dataset.headers.length
+      shared &&
+      dataset &&
+      companyColumn >= 0 &&
+      companyColumn < dataset.headers.length
         ? analyzeRows(dataset.rows, companyColumn, rules)
         : null,
-    [dataset, companyColumn, rules],
+    [dataset, companyColumn, rules, shared],
   );
   const filteredProjects = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -981,8 +1268,71 @@ export default function App() {
     result?.clerks.filter(
       (clerk) => clerk.id !== null && clerk.invoiceCount > 0,
     ).length ?? 0;
-  const isDefault =
-    rulesSignature(rules) === rulesSignature(freshDefaultRules());
+
+  const fetchShared = useCallback(
+    async () =>
+      checkedSnapshot(await sharedRequest<SharedPortfolio>("/api/portfolio")),
+    [],
+  );
+  const refreshShared = useCallback(async () => {
+    const requestId = ++sharedRequestId.current;
+    setLoadingRules(true);
+    try {
+      const next = await fetchShared();
+      if (requestId !== sharedRequestId.current) return;
+      setShared(next);
+      setSharedError(false);
+      sharedLoadedAt.current = Date.now();
+    } catch {
+      if (requestId === sharedRequestId.current) setSharedError(true);
+    } finally {
+      if (requestId === sharedRequestId.current) setLoadingRules(false);
+    }
+  }, [fetchShared]);
+  useEffect(() => {
+    void refreshShared();
+    const refreshOnReturn = () => {
+      if (!document.hidden && Date.now() - sharedLoadedAt.current > 15000) {
+        sharedLoadedAt.current = Date.now();
+        void refreshShared();
+      }
+    };
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    return () => {
+      sharedRequestId.current++;
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
+  }, [refreshShared]);
+  useEffect(() => {
+    let active = true;
+    setCanEdit(false);
+    setPermissionError(false);
+    if (!authLoaded || !isSignedIn) {
+      setCheckingPermission(false);
+      return;
+    }
+    setCheckingPermission(true);
+    void (async () => {
+      try {
+        const token = await getToken();
+        if (!token) throw new SharedApiError("unauthorized");
+        const permission = await sharedRequest<{ canEdit: boolean }>(
+          "/api/admin",
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (active) setCanEdit(permission.canEdit === true);
+      } catch {
+        if (active) setPermissionError(true);
+      } finally {
+        if (active) setCheckingPermission(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [authLoaded, isSignedIn, userId, getToken, permissionRequest]);
   useEffect(() => {
     document.documentElement.lang = language === "en" ? "en" : "zh-CN";
     document.title =
@@ -1079,14 +1429,67 @@ export default function App() {
       setCompanyColumn(prepareDataset(sheet, header).companyColumn);
     else setCompanyColumn(-1);
   }
-  function saveRules(next: APPortfolio[]) {
-    setRules(next);
-    setEditor(false);
-    setNotice("saved");
+  function openPortfolioEditor() {
+    if (!shared) return;
+    setEditorRevision(shared.revision);
+    setEditor(true);
+  }
+  async function reloadEditorRules() {
+    const requestId = ++sharedRequestId.current;
+    setLoadingRules(true);
     try {
-      localStorage.setItem(STORAGE_KEY, serializeRules(next));
-    } catch {
-      setNotice("sessionSaved");
+      const next = await fetchShared();
+      if (requestId === sharedRequestId.current) {
+        setShared(next);
+        setSharedError(false);
+        sharedLoadedAt.current = Date.now();
+      }
+      setEditorRevision(next.revision);
+      return next.portfolios;
+    } catch (error) {
+      if (requestId === sharedRequestId.current) setSharedError(true);
+      throw error;
+    } finally {
+      if (requestId === sharedRequestId.current) setLoadingRules(false);
+    }
+  }
+  async function saveRules(next: APPortfolio[]) {
+    if (!canEdit) throw new Error(t.saveForbidden);
+    if (!editorRevision) throw new Error(t.saveUnavailable);
+    try {
+      const token = await getToken();
+      if (!token) throw new SharedApiError("unauthorized");
+      const saved = checkedSnapshot(
+        await sharedRequest<SharedPortfolio>("/api/portfolio", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ revision: editorRevision, portfolios: next }),
+        }),
+      );
+      sharedRequestId.current++;
+      setShared(saved);
+      setLoadingRules(false);
+      setSharedError(false);
+      sharedLoadedAt.current = Date.now();
+      setEditor(false);
+      setNotice("saved");
+    } catch (error) {
+      const code =
+        error instanceof SharedApiError ? error.code : "service_unavailable";
+      const message =
+        code === "revision_conflict"
+          ? t.saveConflict
+          : code === "unauthorized"
+            ? t.sessionExpired
+            : code === "forbidden"
+              ? t.saveForbidden
+              : code === "invalid_rules"
+                ? t.saveInvalid
+                : t.saveUnavailable;
+      throw new Error(message);
     }
   }
   function flipSort(field: "projectNumber" | "invoiceCount") {
@@ -1129,6 +1532,32 @@ export default function App() {
           </span>
         </div>
         <div className="top-actions">
+          <div className="admin-access">
+            {isSignedIn ? (
+              <>
+                <span className="admin-role">
+                  {checkingPermission
+                    ? t.checkingPermissions
+                    : canEdit
+                      ? t.admin
+                      : t.readOnlyAccess}
+                </span>
+                <UserButton />
+              </>
+            ) : authLoaded ? (
+              <SignInButton mode="modal">
+                <button className="admin-sign-in">
+                  <LockKeyhole />
+                  {t.adminSignIn}
+                </button>
+              </SignInButton>
+            ) : (
+              <button className="admin-sign-in" disabled>
+                <LockKeyhole />
+                {t.adminSignIn}
+              </button>
+            )}
+          </div>
           <span className="private-tag">
             <ShieldCheck aria-hidden="true" />
             {t.private}
@@ -1168,12 +1597,38 @@ export default function App() {
               <CircleHelp />
               {t.guide}
             </button>
-            <button onClick={() => setEditor(true)}>
+            <button disabled={!shared} onClick={openPortfolioEditor}>
               <Settings2 />
-              {t.portfolios}
+              {canEdit && !sharedError ? t.portfolios : t.viewPortfolios}
             </button>
           </div>
         </div>
+        {sharedError ? (
+          <div className="notice error" role="alert">
+            <TriangleAlert />
+            <div>{shared ? t.rulesStale : t.rulesLoadFailure}</div>
+            <button
+              className="small"
+              disabled={loadingRules}
+              onClick={() => void refreshShared()}
+            >
+              {loadingRules ? t.syncingRules : t.retry}
+            </button>
+          </div>
+        ) : null}
+        {permissionError ? (
+          <div className="notice" role="status">
+            <Info />
+            <div>{t.permissionUnavailable}</div>
+            <button
+              className="small"
+              disabled={checkingPermission}
+              onClick={() => setPermissionRequest((value) => value + 1)}
+            >
+              {t.retry}
+            </button>
+          </div>
+        ) : null}
         {error ? (
           <div className="notice error" role="alert">
             <TriangleAlert />
@@ -1373,16 +1828,47 @@ export default function App() {
                 </div>
                 <div className="rules-summary">
                   <span>{t.activeClerks}</span>
-                  <strong>{rules.length}</strong>
+                  <strong>{shared ? rules.length : "—"}</strong>
                 </div>
                 <div className="rules-summary">
                   <span>{t.distribution}</span>
-                  <strong>{isDefault ? t.defaultRules : t.customRules}</strong>
+                  <strong>
+                    {loadingRules && !shared ? t.syncingRules : t.sharedRules}
+                  </strong>
+                </div>
+                <div className="shared-rule-status">
+                  <ShieldCheck aria-hidden="true" />
+                  <div>
+                    <strong>{canEdit ? t.admin : t.readOnlyAccess}</strong>
+                    <span>
+                      {shared?.updatedAt
+                        ? `${t.lastSaved}: ${new Intl.DateTimeFormat(language === "en" ? "en-CA" : "zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(shared.updatedAt))}`
+                        : shared
+                          ? t.notYetUpdated
+                          : t.syncingRules}
+                    </span>
+                  </div>
                 </div>
                 <p className="rule-info">{t.rulesNote}</p>
-                <button className="full-width" onClick={() => setEditor(true)}>
+                <button
+                  className="text-button refresh-rules"
+                  disabled={loadingRules}
+                  onClick={() => void refreshShared()}
+                >
+                  {loadingRules ? (
+                    <LoaderCircle className="spinner" />
+                  ) : (
+                    <RotateCcw />
+                  )}
+                  {t.refreshRules}
+                </button>
+                <button
+                  className="full-width"
+                  disabled={!shared}
+                  onClick={openPortfolioEditor}
+                >
                   <Settings2 />
-                  {t.editRules}
+                  {canEdit && !sharedError ? t.editRules : t.viewPortfolios}
                 </button>
               </div>
             </section>
@@ -1421,7 +1907,11 @@ export default function App() {
                   role="status"
                 >
                   <span className="status-dot" />
-                  {result ? t.ready : t.awaiting}
+                  {result
+                    ? t.ready
+                    : !shared && loadingRules
+                      ? t.syncingRules
+                      : t.awaiting}
                 </span>
               </div>
               {result ? (
@@ -1763,13 +2253,25 @@ export default function App() {
                   <div className="empty-icon">
                     <BarChart3 />
                   </div>
-                  <h3>{workbook ? t.companyNone : t.emptyTitle}</h3>
+                  <h3>
+                    {!shared
+                      ? loadingRules
+                        ? t.syncingRules
+                        : t.rulesLoadFailure
+                      : workbook
+                        ? t.companyNone
+                        : t.emptyTitle}
+                  </h3>
                   <p>
-                    {workbook
-                      ? dataset
-                        ? t.columnNote
-                        : t.badHeader
-                      : t.emptyText}
+                    {!shared
+                      ? loadingRules
+                        ? t.syncingRules
+                        : t.rulesLoadFailure
+                      : workbook
+                        ? dataset
+                          ? t.columnNote
+                          : t.badHeader
+                        : t.emptyText}
                   </p>
                   <div className="empty-placeholder" aria-hidden="true">
                     <span />
@@ -1833,6 +2335,8 @@ export default function App() {
           language={language}
           onClose={() => setEditor(false)}
           onSave={saveRules}
+          onReload={reloadEditorRules}
+          readOnly={!canEdit || sharedError}
         />
       ) : null}
     </div>
