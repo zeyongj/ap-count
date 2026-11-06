@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vercel/
+.env*
+!.env.example
+.DS_Store
+coverage/
+test-results/
+playwright-report/
+*.xls
+*.xlsx
+*.csv
+!public/demo-invoices.csv
