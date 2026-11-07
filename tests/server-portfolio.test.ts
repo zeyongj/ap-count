@@ -16,7 +16,12 @@ const document = (): StoredPortfolio => ({
   updatedAt: now.toISOString(),
   portfolios: freshDefaultRules(),
 });
-const admin = async () => ({ signedIn: true, canEdit: true });
+const admin = async () => ({
+  signedIn: true,
+  canEdit: true,
+  isOwner: true,
+  actor: { userId: "owner", email: "admin@example.test" },
+});
 const request = (body: unknown, extra: RequestInit = {}) =>
   new Request("https://ap-count.vercel.app/api/portfolio", {
     method: "PUT",
@@ -93,12 +98,17 @@ describe("shared portfolio API", () => {
     },
   );
 
-  test("admin status exposes only a boolean, including for signed-in non-admin users", async () => {
+  test("admin status exposes capabilities without identity metadata", async () => {
     const { store } = memoryStore();
     for (const authorization of [
       { signedIn: false, canEdit: false },
       { signedIn: true, canEdit: false },
-      { signedIn: true, canEdit: true },
+      {
+        signedIn: true,
+        canEdit: true,
+        isOwner: true,
+        actor: { userId: "owner", email: "admin@example.test" },
+      },
     ]) {
       const api = createApiHandlers({
         store,
@@ -108,7 +118,11 @@ describe("shared portfolio API", () => {
         new Request("https://ap-count.vercel.app/api/admin"),
       );
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ canEdit: authorization.canEdit });
+      expect(await response.json()).toEqual({
+        canEdit: authorization.canEdit,
+        role: authorization.canEdit ? "owner" : "visitor",
+        canManageAdmins: authorization.canEdit,
+      });
     }
   });
 

@@ -1,7 +1,7 @@
 import { BlobPreconditionFailedError, get, put } from "@vercel/blob";
 import {
   INITIAL_REVISION,
-  MAX_JSON_BYTES,
+  MAX_STORED_BYTES,
   parseStoredPortfolio,
   RevisionConflictError,
   type PortfolioStore,
@@ -26,10 +26,10 @@ export function createBlobPortfolioStore(
       useCache: false,
     });
     if (!result) return null;
-    if (result.statusCode !== 200 || result.blob.size > MAX_JSON_BYTES)
+    if (result.statusCode !== 200 || result.blob.size > MAX_STORED_BYTES)
       throw new Error("Unexpected shared portfolio storage response.");
     const text = await new Response(result.stream).text();
-    if (new TextEncoder().encode(text).byteLength > MAX_JSON_BYTES)
+    if (new TextEncoder().encode(text).byteLength > MAX_STORED_BYTES)
       throw new Error("The stored portfolio is too large.");
     return {
       document: parseStoredPortfolio(JSON.parse(text)),

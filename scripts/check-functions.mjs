@@ -10,13 +10,21 @@ async function loadFunction(name) {
   return import(pathToFileURL(resolve(directory, config.handler)).href);
 }
 
-const [portfolio, admin] = await Promise.all([
+const [portfolio, admin, governance] = await Promise.all([
   loadFunction('portfolio'),
   loadFunction('admin'),
+  loadFunction('governance'),
 ]);
 const anonymous = await admin.GET(new Request('https://ap-count.vercel.app/api/admin'));
 assert.equal(anonymous.status, 200);
-assert.deepEqual(await anonymous.json(), { canEdit: false });
+assert.deepEqual(await anonymous.json(), { canEdit: false, role: 'visitor', canManageAdmins: false });
+const privateHistory = await governance.GET(new Request('https://ap-count.vercel.app/api/governance'));
+assert.equal(privateHistory.status, 401);
+const privateMutation = await governance.POST(new Request('https://ap-count.vercel.app/api/governance', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ revision: 'initial', action: 'grant-admin', email: 'untrusted@example.test' }),
+}));
+assert.equal(privateMutation.status, 401);
 const rejected = await portfolio.PUT(new Request('https://ap-count.vercel.app/api/portfolio', {
   method: 'PUT',
   headers: { 'Content-Type': 'application/json' },

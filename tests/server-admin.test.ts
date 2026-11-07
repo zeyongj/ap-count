@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   authenticate: vi.fn(),
   user: vi.fn(),
+  userList: vi.fn(),
   client: vi.fn(),
 }));
 vi.mock("@clerk/backend", () => ({
@@ -10,7 +11,7 @@ vi.mock("@clerk/backend", () => ({
     mocks.client(...options);
     return {
       authenticateRequest: mocks.authenticate,
-      users: { getUser: mocks.user },
+      users: { getUser: mocks.user, getUserList: mocks.userList },
     };
   },
 }));
@@ -18,6 +19,7 @@ vi.mock("@clerk/backend", () => ({
 import {
   authorizedOrigins,
   createAdminAuthorizer,
+  createAdministratorLookup,
   isVerifiedAdministrator,
 } from "../server/admin";
 
@@ -125,6 +127,8 @@ describe("administrator identity enforcement", () => {
     expect(await authorize(bearerRequest())).toEqual({
       signedIn: true,
       canEdit: true,
+      isOwner: true,
+      actor: { userId: "user_verified", email: "admin@example.test" },
     });
     expect(mocks.user).toHaveBeenCalledWith("user_verified");
     expect(mocks.authenticate).toHaveBeenCalledWith(expect.any(Request), {
@@ -148,10 +152,20 @@ describe("administrator identity enforcement", () => {
       },
     ]) {
       mocks.user.mockResolvedValue(identity);
-      expect(await authorize(bearerRequest())).toEqual({
+      const authorization = await authorize(bearerRequest());
+      expect(authorization).toMatchObject({
         signedIn: true,
         canEdit: false,
+        isOwner: false,
       });
+      if (identity.emailAddresses[0].verification?.status === "verified") {
+        expect(authorization.actor).toEqual({
+          userId: "user_verified",
+          email: "reader@example.test",
+        });
+      } else {
+        expect(authorization.actor).toBeUndefined();
+      }
     }
   });
 
@@ -171,5 +185,59 @@ describe("administrator identity enforcement", () => {
       "http://127.0.0.1:4173",
     );
     expect(authorizedOrigins(env)).not.toContain("http://127.0.0.1:4173");
+  });
+});
+
+describe("administrator grant identity lookup", () => {
+  test("looks up an existing exact verified primary email and binds Clerk user ID", async () => {
+    mocks.userList.mockResolvedValue({
+      data: [{ ...user(), id: "user_resolved" }],
+    });
+    expect(
+      await createAdministratorLookup(env)(" ADMIN@example.test "),
+    ).toEqual({ userId: "user_resolved", email: "admin@example.test" });
+    expect(mocks.userList).toHaveBeenCalledWith({
+      emailAddress: ["admin@example.test"],
+      limit: 100,
+    });
+  });
+  test("missing, secondary-only and ambiguous identities cannot receive grants", async () => {
+    for (const data of [
+      [],
+      [{ ...user(), id: "user_secondary", primaryEmailAddressId: "other" }],
+      [
+        { ...user(), id: "one" },
+        { ...user(), id: "two" },
+      ],
+    ]) {
+      mocks.userList.mockResolvedValue({ data });
+      await expect(
+        createAdministratorLookup(env)("admin@example.test"),
+      ).rejects.toMatchObject({ status: 422, code: "account_not_found" });
+    }
+  });
+  test("unverified, banned and locked accounts cannot receive grants or retain privileged identity", async () => {
+    for (const identity of [
+      {
+        ...user(),
+        id: "user_unverified",
+        emailAddresses: [
+          { ...primary, verification: { status: "unverified" } },
+        ],
+      },
+      { ...user(), id: "user_banned", banned: true },
+      { ...user(), id: "user_locked", locked: true },
+    ]) {
+      mocks.userList.mockResolvedValue({ data: [identity] });
+      await expect(
+        createAdministratorLookup(env)("admin@example.test"),
+      ).rejects.toMatchObject({ status: 422, code: "email_not_verified" });
+      mocks.user.mockResolvedValue(identity);
+      expect(await createAdminAuthorizer(env)(bearerRequest())).toEqual({
+        signedIn: true,
+        canEdit: false,
+        isOwner: false,
+      });
+    }
   });
 });
