@@ -34,6 +34,40 @@ beforeEach(() => {
 });
 
 describe("private Blob portfolio adapter", () => {
+  test.each(['W/"v1"', 'v1', '', '"invalid\nrevision"'])(
+    "unexpected weak or malformed read revision %j fails closed",
+    async (etag) => {
+      mocks.get.mockImplementation(async () => {
+        const result = blobResult();
+        result.blob.etag = etag;
+        return result;
+      });
+      const store = createBlobPortfolioStore({ BLOB_STORE_ID: "store_unit_test" });
+      await expect(store.read()).rejects.toThrow("strong storage revision");
+      expect(mocks.get).toHaveBeenCalledWith(PORTFOLIO_PATH, expect.objectContaining({
+        useCache: false, headers: { "accept-encoding": "identity" },
+      }));
+      expect(mocks.put).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each(['W/"v1"', 'v1', '', '"invalid\nrevision"'])(
+    "weak or malformed conditional revision %j never reaches a write",
+    async (revision) => {
+      const store = createBlobPortfolioStore({ BLOB_STORE_ID: "store_unit_test" });
+      await expect(store.write(document, revision)).rejects.toThrow("strong storage revision");
+      expect(mocks.put).not.toHaveBeenCalled();
+    },
+  );
+
+  test("a successful provider write with an unexpected weak result is not retried or accepted", async () => {
+    const store = createBlobPortfolioStore({ BLOB_STORE_ID: "store_unit_test" });
+    mocks.put.mockResolvedValueOnce({ etag: 'W/"v2"' });
+    await expect(store.write(document, '"v1"')).rejects.toThrow("not a strong ETag");
+    expect(mocks.put).toHaveBeenCalledTimes(1);
+    expect(mocks.put.mock.calls[0][2].ifMatch).toBe('"v1"');
+  });
+
   test("reads always use the latest origin data and a fixed private pathname", async () => {
     const store = createBlobPortfolioStore({
       BLOB_STORE_ID: "store_unit_test",
@@ -43,6 +77,7 @@ describe("private Blob portfolio adapter", () => {
       access: "private",
       storeId: "store_unit_test",
       useCache: false,
+      headers: { "accept-encoding": "identity" },
     });
   });
 
@@ -55,6 +90,7 @@ describe("private Blob portfolio adapter", () => {
       access: "private",
       token: "unit-test-credential",
       useCache: false,
+      headers: { "accept-encoding": "identity" },
     });
     expect(JSON.stringify(result)).not.toContain("unit-test-credential");
   });
