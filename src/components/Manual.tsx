@@ -50,16 +50,36 @@ const content: Record<Language, ManualCopy> = {
         paragraphs: [
           "Each nonblank data row counts as one invoice. Duplicate rows and repeated invoice numbers count again. The header and rows above it are excluded; remove nonblank totals or footnotes below the header before importing.",
           "The first bracketed number, such as [5419], is the project number. If none exists, the first number in Company is used. AP counts include configured clerks with zero invoices; the Projects metric counts distinct project numbers and excludes missing numbers.",
+          "New results appear with a brief animation. The interface respects your system’s Reduce motion preference; the animation does not change the calculations or exported data.",
         ],
       },
       {
         id: "distribution",
         title: "View or update the shared AP distribution",
         paragraphs: [
-          "Everyone can view portfolios, count invoices, and download results without signing in. Only the administrator account with its authorized, verified primary email can edit.",
+          "Everyone can view portfolios, count invoices, and download results without signing in. The Owner and authorized administrators can edit after signing in with a verified primary email.",
           "Choose Admin sign in, then Manage portfolios. Edit names, ranges, explicit assignments, or exclusions. Range ends are inclusive; leaving To empty means no upper limit. Save & recalculate publishes the distribution to everyone and updates your current counts.",
         ],
         note: "Saved rules remain active until the next administrator save. Other computers load them when opening the page; return to the page or choose Refresh shared rules to fetch the latest version.",
+      },
+      {
+        id: "administrators",
+        title: "Manage administrator access",
+        paragraphs: [
+          "The Owner manages access through Administration → Administrators. The Owner account is configured on the server and cannot be removed from this screen. Administrators can maintain the distribution, review rule history, and restore versions; they cannot grant or revoke administrator access.",
+          "To add an administrator, ask the person to register through Admin sign in and verify their primary email first. Enter that exact email under Add administrator. The app checks the existing Clerk account and binds permission to its user ID and verified primary email. Adding permission does not create an account or send an invitation email.",
+          "To remove an administrator, choose Revoke access and confirm. This removes their AP Count edit permission, without deleting their Clerk account. Permission changes are enforced by the server; refresh the page if the displayed controls have not updated.",
+        ],
+      },
+      {
+        id: "history",
+        title: "Review rule history and restore a version",
+        paragraphs: [
+          "The Owner and administrators can open Administration → Rules history to review up to 100 recent rule versions. The oldest versions are removed sooner if storage capacity is reached. Each recorded save shows its version, server-recorded time, editor, and rule details. Starting snapshot preserves the distribution that existed before history was enabled; its earlier editor record may not be available. Older unrecorded edits cannot be recovered.",
+          "Select a version, review its rules and changes, then choose Restore this version and confirm. Restoration publishes those rules for everyone as a new version and recalculates your loaded file. It does not restore old administrator permissions. Rule history remains subject to its version-count and storage-capacity limits.",
+          "If another session changes the shared configuration first, the action is rejected. Refresh the management view, review the current state, and choose the intended action again. The app does not silently overwrite a newer configuration.",
+        ],
+        note: "History and editor identities are visible only to the Owner and administrators. Public visitors can read the active AP distribution, but cannot read history or manage access.",
       },
       {
         id: "conflicts",
@@ -94,7 +114,7 @@ const content: Record<Language, ManualCopy> = {
         id: "privacy",
         title: "Privacy and supported limits",
         paragraphs: [
-          "Invoice files and rows stay in browser memory and are not uploaded. Reloading removes the loaded invoice data. Cloud storage holds shared AP rules and their save time; those rules are readable by every visitor. Administrator sign-in is handled by Clerk.",
+          "Invoice files and rows stay in browser memory and are not uploaded. Reloading removes the loaded invoice data. Cloud storage holds active AP rules, retained rule versions with editor identities and save times, and administrator permissions. Active rules are readable by every visitor; history is restricted to administrators, and the access list to the Owner. Administrator sign-in is handled by Clerk.",
           "Limits: 25 MB per file, 250,000 worksheet rows including headers, 1,000 columns, and 100 worksheets. Split large reports first. Password-protected or corrupted files are unsupported. This site remains a personal, non-commercial demo using free service allowances.",
         ],
       },
@@ -125,16 +145,36 @@ const content: Record<Language, ManualCopy> = {
         paragraphs: [
           "每个非空数据行计一张发票，重复数据行或重复发票号也会再次计入。表头及其上方内容不计数；表头下方不应统计的非空汇总行、备注或页脚，请先从源文件移除。",
           "优先取第一个方括号数字（例如 [5419]）作为项目号；没有时，取 Company 中的第一个数字。AP 统计会显示数量为零的已配置人员；“项目数”统计不同项目编号，不包含缺少编号的数据行。",
+          "新结果会带有简短动画。界面遵循系统的“减少动态效果”偏好；动画不会改变计算结果或导出的数据。",
         ],
       },
       {
         id: "distribution",
         title: "查看或修改共同的 AP 分配",
         paragraphs: [
-          "所有访客无需登录即可查看分配、统计发票及下载结果。只有主要邮箱已验证且获得授权的管理员账户可以修改规则。",
+          "所有访客无需登录即可查看分配、统计发票及下载结果。Owner 和获得授权的管理员可在使用已验证的主要邮箱登录后修改规则。",
           "点击“管理员登录”，再进入“管理 AP 分配”。可修改姓名、范围、明确分配及排除项目。范围包含起始和截止编号，截止留空表示无上限。点击“保存并重新统计”，会更新所有人共用的分配，并重新计算当前文件。",
         ],
         note: "保存的规则会持续生效，直到管理员再次保存。其他电脑打开网页时会读取同一份规则；返回页面或点击“刷新共享规则”可获取最新版本。",
+      },
+      {
+        id: "administrators",
+        title: "管理管理员权限",
+        paragraphs: [
+          "Owner 可通过“管理中心 → 管理员”维护权限。Owner 账户由服务器配置，无法在此界面移除。管理员可维护 AP 分配、查看规则历史及恢复版本，但不能添加或撤销其他管理员。",
+          "添加前，请先让对方通过“管理员登录”注册并验证主要邮箱，再在“添加管理员”中输入该邮箱。系统会核对现有 Clerk 账户，并将权限绑定到用户 ID 和已验证的主要邮箱。添加权限不会创建账户，也不会发送邀请邮件。",
+          "移除管理员时，点击“撤销权限”并确认。这只撤销其 AP Count 编辑权限，不会删除 Clerk 账户。每次操作都由服务器核对权限；如果页面按钮尚未更新，请刷新页面。",
+        ],
+      },
+      {
+        id: "history",
+        title: "查看规则历史与恢复版本",
+        paragraphs: [
+          "Owner 和管理员可在“管理中心 → 规则历史”查看最多最近 100 个规则版本；存储容量达到上限时会提前移除最旧版本。每次记录包含版本、服务器记录的时间、操作者及规则详情。“起始快照”保留启用历史功能前的现有分配，当时的操作者可能无记录。此前未记录的修改无法追溯恢复。",
+          "选择版本并核对规则与变更后，点击“恢复此版本”并确认。恢复会将该分配作为一个新版本发布给所有人，并重新统计当前文件；不会恢复旧的管理员权限。规则历史仍受版本数量和存储容量限制。",
+          "若其他会话已先修改共同配置，当前操作会被拒绝。请刷新管理界面、核对最新状态，再重新选择需要执行的操作。系统不会静默覆盖较新的配置。",
+        ],
+        note: "历史和操作者身份仅供 Owner 与管理员查看。普通访客可以读取当前 AP 分配，但无法查看历史或管理权限。",
       },
       {
         id: "conflicts",
@@ -169,7 +209,7 @@ const content: Record<Language, ManualCopy> = {
         id: "privacy",
         title: "数据隐私与文件限制",
         paragraphs: [
-          "发票文件及数据行仅保留在浏览器内存中，不会上传；刷新后需重新导入。云端保存共同的 AP 规则和保存时间，所有访客均可读取这些规则。管理员登录由 Clerk 处理。",
+          "发票文件及数据行仅保留在浏览器内存中，不会上传；刷新后需重新导入。云端保存当前 AP 规则、保留的规则版本及操作者身份和时间，以及管理员权限。当前规则可供所有访客读取；规则历史仅供管理员查看，权限名单仅供 Owner 查看。管理员登录由 Clerk 处理。",
           "限制：单文件 25 MB，每工作表最多 250,000 行（含表头）和 1,000 列，每文件最多 100 个工作表。大文件请先拆分，不支持加密或损坏文件。本网站继续作为个人、非商业演示，使用相关服务的免费额度。",
         ],
       },
