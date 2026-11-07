@@ -53,6 +53,9 @@ import type {
 } from "./lib/types";
 import "./styles.css";
 import Manual from "./components/Manual";
+import Governance from "./components/Governance";
+import type { AccessRole, AdminStatus } from "./lib/governance";
+import { useResultsReveal } from "./lib/use-results-reveal";
 
 type Language = "en" | "zh";
 type AppPage = "count" | "manual";
@@ -79,6 +82,8 @@ const copy = {
     viewPortfolios: "View portfolios",
     adminSignIn: "Admin sign in",
     admin: "Administrator",
+    owner: "Owner",
+    administration: "Administration",
     readOnlyAccess: "Read-only access",
     checkingPermissions: "Checking permissions…",
     permissionUnavailable:
@@ -277,6 +282,8 @@ const copy = {
     viewPortfolios: "查看 AP 分配",
     adminSignIn: "管理员登录",
     admin: "管理员",
+    owner: "所有者",
+    administration: "管理中心",
     readOnlyAccess: "只读权限",
     checkingPermissions: "正在核对权限…",
     permissionUnavailable: "无法验证管理员权限，请重试或重新登录。",
@@ -1194,6 +1201,8 @@ export default function App() {
   const [loadingRules, setLoadingRules] = useState(true);
   const [sharedError, setSharedError] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
+  const [accessRole, setAccessRole] = useState<AccessRole>("visitor");
+  const [governanceOpen, setGovernanceOpen] = useState(false);
   const [checkingPermission, setCheckingPermission] = useState(false);
   const [permissionError, setPermissionError] = useState(false);
   const [permissionRequest, setPermissionRequest] = useState(0);
@@ -1246,6 +1255,7 @@ export default function App() {
         : null,
     [dataset, companyColumn, rules, shared],
   );
+  const resultsRef = useResultsReveal(result);
   const filteredProjects = useMemo(() => {
     const needle = search.trim().toLowerCase();
     const rows = (result?.projects ?? []).filter(
@@ -1294,7 +1304,9 @@ export default function App() {
     try {
       const next = await fetchShared();
       if (requestId !== sharedRequestId.current) return;
-      setShared(next);
+      setShared((current) =>
+        current?.revision === next.revision ? current : next,
+      );
       setSharedError(false);
       sharedLoadedAt.current = Date.now();
     } catch {
@@ -1303,12 +1315,35 @@ export default function App() {
       if (requestId === sharedRequestId.current) setLoadingRules(false);
     }
   }, [fetchShared]);
+  const refreshAfterGovernance = useCallback(async () => {
+    const requestId = ++sharedRequestId.current;
+    setLoadingRules(true);
+    try {
+      const next = await fetchShared();
+      if (requestId !== sharedRequestId.current) return;
+      setShared((current) =>
+        current?.revision === next.revision ? current : next,
+      );
+      setSharedError(false);
+      sharedLoadedAt.current = Date.now();
+    } catch (error) {
+      if (requestId === sharedRequestId.current) setSharedError(true);
+      throw error;
+    } finally {
+      if (requestId === sharedRequestId.current) setLoadingRules(false);
+    }
+  }, [fetchShared]);
+  const refreshAccess = useCallback(() => {
+    setPermissionRequest((value) => value + 1);
+    void refreshShared();
+  }, [refreshShared]);
   useEffect(() => {
     void refreshShared();
     const refreshOnReturn = () => {
       if (!document.hidden && Date.now() - sharedLoadedAt.current > 15000) {
         sharedLoadedAt.current = Date.now();
         void refreshShared();
+        setPermissionRequest((value) => value + 1);
       }
     };
     window.addEventListener("focus", refreshOnReturn);
@@ -1322,6 +1357,7 @@ export default function App() {
   useEffect(() => {
     let active = true;
     setCanEdit(false);
+    setAccessRole("visitor");
     setPermissionError(false);
     if (!authLoaded || !isSignedIn) {
       setCheckingPermission(false);
@@ -1332,11 +1368,18 @@ export default function App() {
       try {
         const token = await getToken();
         if (!token) throw new SharedApiError("unauthorized");
-        const permission = await sharedRequest<{ canEdit: boolean }>(
-          "/api/admin",
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (active) setCanEdit(permission.canEdit === true);
+        const permission = await sharedRequest<AdminStatus>("/api/admin", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (active) {
+          const role =
+            permission.role === "owner" || permission.role === "admin"
+              ? permission.role
+              : "visitor";
+          setAccessRole(role);
+          setCanEdit(permission.canEdit === true && role !== "visitor");
+          if (role === "visitor") setGovernanceOpen(false);
+        }
       } catch {
         if (active) setPermissionError(true);
       } finally {
@@ -1347,6 +1390,9 @@ export default function App() {
       active = false;
     };
   }, [authLoaded, isSignedIn, userId, getToken, permissionRequest]);
+  useEffect(() => {
+    if (!isSignedIn) setGovernanceOpen(false);
+  }, [isSignedIn]);
   useEffect(() => {
     const onHashChange = () => setActivePage(pageFromHash());
     window.addEventListener("hashchange", onHashChange);
@@ -1505,6 +1551,7 @@ export default function App() {
     } catch (error) {
       const code =
         error instanceof SharedApiError ? error.code : "service_unavailable";
+      if (code === "forbidden" || code === "unauthorized") refreshAccess();
       const message =
         code === "revision_conflict"
           ? t.saveConflict
@@ -1564,10 +1611,21 @@ export default function App() {
                 <span className="admin-role">
                   {checkingPermission
                     ? t.checkingPermissions
-                    : canEdit
-                      ? t.admin
-                      : t.readOnlyAccess}
+                    : accessRole === "owner"
+                      ? t.owner
+                      : canEdit
+                        ? t.admin
+                        : t.readOnlyAccess}
                 </span>
+                {canEdit ? (
+                  <button
+                    className="admin-sign-in"
+                    onClick={() => setGovernanceOpen(true)}
+                  >
+                    <ShieldCheck aria-hidden="true" />
+                    {t.administration}
+                  </button>
+                ) : null}
                 <UserButton />
               </>
             ) : authLoaded ? (
@@ -1889,7 +1947,13 @@ export default function App() {
                   <div className="shared-rule-status">
                     <ShieldCheck aria-hidden="true" />
                     <div>
-                      <strong>{canEdit ? t.admin : t.readOnlyAccess}</strong>
+                      <strong>
+                        {accessRole === "owner"
+                          ? t.owner
+                          : canEdit
+                            ? t.admin
+                            : t.readOnlyAccess}
+                      </strong>
                       <span>
                         {shared?.updatedAt
                           ? `${t.lastSaved}: ${new Intl.DateTimeFormat(language === "en" ? "en-CA" : "zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(shared.updatedAt))}`
@@ -1923,7 +1987,7 @@ export default function App() {
                 </div>
               </section>
             </aside>
-            <div className="results" aria-busy={busy}>
+            <div className="results" aria-busy={busy} ref={resultsRef}>
               <div className="metrics">
                 {metricLabels.map((label, i) => {
                   const Icon = metricIcons[i];
@@ -2381,6 +2445,16 @@ export default function App() {
           {t.localOnly}
         </span>
       </footer>
+      {governanceOpen && isSignedIn ? (
+        <Governance
+          key={userId}
+          language={language}
+          getToken={getToken}
+          onClose={() => setGovernanceOpen(false)}
+          onRulesChanged={refreshAfterGovernance}
+          onAccessChanged={refreshAccess}
+        />
+      ) : null}
       {editor ? (
         <PortfolioEditor
           rules={rules}

@@ -1,0 +1,555 @@
+.governance-modal {
+  width: min(1040px, 100%);
+}
+.governance-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.governance-header h2 svg {
+  width: 21px;
+  height: 21px;
+  color: #2864d9;
+}
+.governance-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
+  border-bottom: 1px solid #e0e7f0;
+  background: #fff;
+  flex-shrink: 0;
+}
+.governance-tabs {
+  display: flex;
+  gap: 18px;
+}
+.governance-tabs > button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 15px 0;
+  color: #72849e;
+  font-size: 12px;
+}
+.governance-tabs > button[aria-selected="true"] {
+  color: #205fd3;
+  border-bottom-color: #2864d9;
+}
+.governance-tabs svg {
+  width: 15px;
+  height: 15px;
+}
+.governance-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px;
+}
+.governance-body [hidden] {
+  display: none;
+}
+.governance-help {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: #788aa2;
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 0 0 16px;
+}
+.governance-help > svg {
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.governance-message {
+  margin-bottom: 16px;
+}
+.governance-message small {
+  display: block;
+  margin-top: 4px;
+}
+.governance-message > span {
+  flex: 1;
+}
+.governance-message button {
+  width: auto;
+  padding: 4px 8px;
+  margin: 0;
+}
+.governance-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #cce6db;
+  border-radius: 7px;
+  background: #f0faf5;
+  color: #277451;
+  font-size: 12px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+.governance-success svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.governance-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 200px;
+  font-size: 13px;
+  color: #7589a4;
+}
+.governance-loading svg {
+  width: 20px;
+  height: 20px;
+}
+.governance-history-layout {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.governance-version-list {
+  display: grid;
+  gap: 7px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 1px 5px 3px 1px;
+}
+.governance-version {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  min-width: 0;
+  color: #667b96;
+  font-size: 11px;
+}
+.governance-version.active {
+  border-color: #9bbced;
+  background: #eef5ff;
+  box-shadow: inset 3px 0 #2864d9;
+}
+.governance-version-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  color: #293f5d;
+}
+.governance-version-heading > strong {
+  font-size: 13px;
+}
+.governance-version-heading > svg {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+}
+.governance-version > small {
+  color: #8696ac;
+  line-height: 1.5;
+  font-size: 10px;
+  font-weight: 400;
+}
+.governance-email {
+  overflow-wrap: anywhere;
+}
+.governance-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #e9f1ff;
+  color: #2864d9;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.governance-badge.owner {
+  background: #edf6f2;
+  color: #3c7961;
+}
+.governance-version-details {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e0e7f0;
+  border-radius: 9px;
+  padding: 20px;
+}
+.governance-version-details > header {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.governance-version-details > header > div {
+  min-width: 0;
+}
+.governance-version-details > header > button {
+  flex-shrink: 0;
+}
+.governance-kicker {
+  color: #8a9ab1;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-size: 9px;
+  font-weight: 650;
+  margin: 0 0 8px;
+}
+.governance-version-details h3 {
+  font-size: 16px;
+  color: #263c59;
+  margin: 0 0 8px;
+}
+.governance-muted {
+  color: #8293aa;
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.governance-changes h4 {
+  font-size: 12px;
+  color: #425a79;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 12px;
+}
+.governance-changes h4 > span {
+  color: #8093ad;
+  background: #eff3f8;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.governance-change {
+  border-top: 1px solid #e8edf4;
+}
+.governance-change > summary,
+.governance-rules-preview > summary {
+  cursor: pointer;
+  padding: 12px 0;
+  color: #42618a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.governance-change > summary > span {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #8293a9;
+}
+.governance-before-after {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 0 14px;
+}
+.governance-before-after > div {
+  min-width: 0;
+  background: #f6f8fc;
+  border-radius: 6px;
+  padding: 12px;
+}
+.governance-before-after h5 {
+  margin: 0 0 10px;
+  font-size: 10px;
+  color: #7a8ca4;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.governance-rule-summary {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.65;
+}
+.governance-rule-summary > div + div {
+  margin-top: 7px;
+}
+.governance-rule-summary dt {
+  font-size: 9px;
+  color: #8a99ae;
+}
+.governance-rule-summary dd {
+  margin: 1px 0 0;
+  overflow-wrap: anywhere;
+  color: #526983;
+}
+.governance-rules-preview {
+  border-top: 1px solid #e3eaf3;
+  margin-top: 16px;
+}
+.governance-rules-preview > summary > span {
+  margin-left: 7px;
+  color: #8a9ab0;
+  font-size: 10px;
+  font-weight: 400;
+}
+.governance-rules-preview > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 3px;
+}
+.governance-rules-preview section {
+  padding: 12px;
+  background: #f7f9fd;
+  border-radius: 6px;
+  min-width: 0;
+}
+.governance-rules-preview h4 {
+  margin: 0 0 10px;
+  color: #496381;
+  font-size: 12px;
+}
+.governance-confirm {
+  padding: 17px;
+  background: #fff9ef;
+  border: 1px solid #ecdab9;
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+.governance-confirm h3 {
+  margin: 0 0 9px;
+  font-size: 14px;
+  color: #805f2c;
+}
+.governance-confirm p {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #967746;
+}
+.governance-confirm .governance-confirm-target {
+  font-weight: 650;
+  color: #6f5632;
+  overflow-wrap: anywhere;
+}
+.governance-confirm > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+.governance-confirm button {
+  font-size: 11px;
+}
+.governance-owner-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: #6e839f;
+  font-size: 11px;
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+.governance-owner-note > svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.governance-add {
+  padding: 19px;
+  border: 1px solid #dfe7f1;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+.governance-add h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #37516f;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.governance-add h3 svg {
+  width: 18px;
+  height: 18px;
+  color: #4b7aca;
+}
+.governance-add p {
+  color: #7a8da6;
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 0 0 16px;
+  max-width: 700px;
+}
+.governance-add > div {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.governance-add label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 11px;
+  color: #6d829e;
+}
+.governance-add input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #dce5f0;
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: #334b69;
+  background: #fcfdff;
+  font-size: 12px;
+  min-height: 37px;
+}
+.governance-add button {
+  min-height: 37px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.governance-admin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.governance-admin-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 17px 18px;
+  border: 1px solid #e1e8f2;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 9px;
+}
+.governance-admin-list > li > div {
+  min-width: 0;
+}
+.governance-admin-list strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3a5373;
+  margin-right: 10px;
+}
+.governance-admin-list small {
+  display: block;
+  font-size: 10px;
+  color: #8a9bb2;
+  margin-top: 7px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.governance-admin-list button {
+  flex-shrink: 0;
+}
+.governance-owner-icon {
+  width: 19px;
+  height: 19px;
+  color: #7da78f;
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .governance-toolbar {
+    padding: 0 16px;
+  }
+  .governance-history-layout {
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .governance-version-details {
+    padding: 15px;
+  }
+  .governance-version-details > header {
+    flex-wrap: wrap;
+  }
+  .governance-before-after,
+  .governance-rules-preview > div {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .governance-body {
+    padding: 16px 13px;
+  }
+  .governance-header h2 {
+    font-size: 17px;
+  }
+  .governance-toolbar {
+    padding: 0 13px;
+    gap: 8px;
+  }
+  .governance-tabs {
+    gap: 12px;
+  }
+  .governance-tabs > button {
+    font-size: 10px;
+    padding: 13px 0;
+    gap: 5px;
+  }
+  .governance-tabs svg {
+    width: 13px;
+    height: 13px;
+  }
+  .governance-toolbar > button {
+    font-size: 10px;
+  }
+  .governance-history-layout {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .governance-version-list {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+    padding: 1px 1px 8px;
+  }
+  .governance-version {
+    flex: 0 0 185px;
+  }
+  .governance-add {
+    padding: 15px;
+  }
+  .governance-add > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .governance-add button {
+    align-self: flex-start;
+  }
+  .governance-admin-list > li {
+    flex-wrap: wrap;
+    padding: 15px;
+  }
+  .governance-admin-list > li > div {
+    flex: 1 1 200px;
+  }
+  .governance-confirm {
+    padding: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .governance-modal *,
+  .governance-modal *::before,
+  .governance-modal *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .governance-modal .spinner {
+    animation: none !important;
+  }
+}
